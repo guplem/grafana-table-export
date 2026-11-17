@@ -1,0 +1,48 @@
+name: Pull request checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A new commit on the same branch cancels the old run.
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+# The merge ruleset requires each job by its name. Rename a job only together with the ruleset.
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # The full history gives the commit check `origin/main` to compare with.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      # `--ignore-scripts`: a runner needs no git hooks and no skill copy.
+      - run: npm ci --ignore-scripts
+      # One umbrella script, the same one that a developer runs: commits, format, lint, types,
+      # architecture, dead code, and the tests with coverage.
+      - run: npm run check
+
+  # Always in full: it scans every changed file, docs included.
+  secrets:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
