@@ -1,0 +1,33 @@
+{
+  "name": "grafana-table-export",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Chrome extension that exports the full result table of Grafana Explore as Markdown, CSV, TSV, JSON or plain text.",
+  "license": "MIT",
+  "scripts": {
+    "prepare": "lefthook install && node scripts/syncSkills.js",
+    "check": "npm run check:static && npm run test:coverage",
+    "check:static": "npm run commits && npm run format:check && npm run lint && npm run typecheck && npm run arch && npm run deadcode",
+    "commits": "node scripts/checkCommits.js",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p jsconfig.json",
+    "arch": "node scripts/checkArchitecture.js",
+    "deadcode": "knip",
+    "test": "node --test",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-include=src/page/exportFormats.js --test-coverage-include=src/page/grafanaFrames.js --test-coverage-include=src/shared/** --test-coverage-include=scripts/** --test-coverage-exclude=scripts/release/nextRelease.js --test-coverage-lines=90 --test-coverage-branches=85 --test-coverage-functions=90"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/chrome": "^0.3.7",
+    "@types/node": "^26.6.6",
+    "eslint": "^10.15.0",
+    "globals": "^17.14.0",
+    "knip": "^6.45.1",
+    "lefthook": "^2.2.2",
+    "prettier": "^3.10.1",
+    "typescript": "^6.0.3"
+  }
+}
