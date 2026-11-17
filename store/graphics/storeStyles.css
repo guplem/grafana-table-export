@@ -1,0 +1,60 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+}
+html,
+body {
+  width: 1280px;
+  height: 800px;
+  overflow: hidden;
+}
+body {
+  font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+  color: #f1f3f4;
+  background:
+    radial-gradient(circle at 88% 12%, rgba(244, 104, 0, 0.2), transparent 38%),
+    radial-gradient(circle at 8% 95%, rgba(61, 113, 217, 0.18), transparent 40%), #111217;
+  position: relative;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 26px;
+  font-weight: 600;
+}
+.brand img {
+  width: 48px;
+  height: 48px;
+}
+.accent {
+  color: #ff8a3d;
+}
+.num {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #f46800;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 22px;
+  flex: none;
+}
+.sub {
+  font-size: 22px;
+  line-height: 1.45;
+  color: #bdc1c6;
+}
+.shot {
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow:
+    0 40px 90px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+.shot img {
+  display: block;
+  width: 100%;
+}

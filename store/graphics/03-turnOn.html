@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="storeStyles.css" />
+    <style>
+      .top {
+        position: absolute;
+        left: 70px;
+        right: 70px;
+        top: 56px;
+      }
+      h1 {
+        font-size: 54px;
+        font-weight: 800;
+        letter-spacing: -1.2px;
+        margin-top: 28px;
+      }
+      .steps {
+        position: absolute;
+        left: 70px;
+        right: 70px;
+        top: 290px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 28px;
+      }
+      .step h3 {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-size: 22px;
+        margin-bottom: 18px;
+      }
+      .mock {
+        border-radius: 12px;
+        background: #ffffff;
+        color: #202124;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+        font-size: 15px;
+      }
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 16px;
+        background: #dee1e6;
+        border-radius: 12px;
+      }
+      .address {
+        flex: 1;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: #ffffff;
+        color: #5f6368;
+      }
+      .icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        outline: 3px solid #f46800;
+        outline-offset: 3px;
+      }
+      .popup {
+        padding: 16px 18px 18px;
+        background: #181b1f;
+        color: #ccccdc;
+      }
+      .popup .head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-bottom: 10px;
+        margin-bottom: 12px;
+        border-bottom: 1px solid #34383e;
+        font-weight: 600;
+      }
+      .popup .head img {
+        width: 24px;
+      }
+      .popup b {
+        display: block;
+        font-size: 16px;
+        margin-bottom: 6px;
+        color: #e8eaed;
+      }
+      .popup p {
+        color: #9aa0a6;
+        font-size: 14px;
+        line-height: 1.45;
+      }
+      .popup .button {
+        margin-top: 12px;
+        padding: 9px;
+        border-radius: 4px;
+        text-align: center;
+        font-weight: 600;
+        color: #ffffff;
+        background: #f46800;
+      }
+      .dialog {
+        padding: 20px 22px;
+      }
+      .dialog b {
+        display: block;
+        font-size: 17px;
+        margin-bottom: 12px;
+      }
+      .dialog p {
+        color: #3c4043;
+        line-height: 1.5;
+      }
+      .dialog .buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 22px;
+      }
+      .dialog .buttons span {
+        padding: 8px 18px;
+        border-radius: 999px;
+        border: 1px solid #dadce0;
+        color: #1a73e8;
+        font-weight: 600;
+      }
+      .dialog .buttons .allow {
+        color: #ffffff;
+        background: #1a73e8;
+        border-color: #1a73e8;
+      }
+      .note {
+        position: absolute;
+        left: 70px;
+        right: 70px;
+        bottom: 120px;
+        font-size: 20px;
+        color: #bdc1c6;
+      }
+      .note b {
+        color: #ffffff;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="top">
+      <div class="brand"><img src="../../icons/icon128.png" alt="" />Table Export for Grafana</div>
+      <h1>Turn it on <span class="accent">for your Grafana.</span></h1>
+      <p class="sub">A one-time step for each Grafana site. The extension runs only where you allow it.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <h3><span class="num">1</span>Click the extension icon</h3>
+        <div class="mock toolbar">
+          <span class="address">grafana.example.com/explore</span>
+          <img class="icon" src="../../icons/icon48.png" alt="" />
+        </div>
+      </div>
+      <div class="step">
+        <h3><span class="num">2</span>Press Turn on</h3>
+        <div class="mock popup">
+          <div class="head"><img src="../../icons/icon48.png" alt="" />Table Export for Grafana</div>
+          <b>This page is Grafana.</b>
+          <p>Chrome asks you once to allow the extension on this site.</p>
+          <div class="button">Turn on for grafana.example.com</div>
+        </div>
+      </div>
+      <div class="step">
+        <h3><span class="num">3</span>Allow it, once</h3>
+        <div class="mock dialog">
+          <b>"Table Export for Grafana" wants to</b>
+          <p>Read and change your data on grafana.example.com</p>
+          <div class="buttons"><span>Deny</span><span class="allow">Allow</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="note"><b>Grafana Cloud</b> (any address that ends in grafana.net) works right after the install, with no step.</p>
+  </body>
+</html>

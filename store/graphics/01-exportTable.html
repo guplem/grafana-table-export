@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="storeStyles.css" />
+    <style>
+      .left {
+        position: absolute;
+        left: 70px;
+        top: 70px;
+        width: 420px;
+      }
+      h1 {
+        font-size: 60px;
+        line-height: 1.05;
+        font-weight: 800;
+        letter-spacing: -1.5px;
+        margin: 52px 0 18px;
+      }
+      .steps {
+        margin-top: 40px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      .step {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        font-size: 23px;
+        font-weight: 600;
+      }
+      .shot {
+        position: absolute;
+        left: 510px;
+        top: 150px;
+        width: 740px;
+        /* The demo page is empty under the table, so show only its top part. */
+        height: 400px;
+        transform: rotate(1deg);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="left">
+      <div class="brand"><img src="../../icons/icon128.png" alt="" />Table Export for Grafana</div>
+      <h1>Export the <span class="accent">whole table.</span></h1>
+      <p class="sub">Every row of the Explore result, not only the rows on screen.</p>
+      <div class="steps">
+        <div class="step"><span class="num">1</span>Run a query in Explore</div>
+        <div class="step"><span class="num">2</span>Press Export above the table</div>
+        <div class="step"><span class="num">3</span>Copy it or download a file</div>
+      </div>
+    </div>
+    <div class="shot"><img src="screenshots/explore.png" alt="" /></div>
+  </body>
+</html>

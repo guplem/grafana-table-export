@@ -1,0 +1,218 @@
+<!doctype html>
+<!--
+  A made-up Explore page with made-up data. It loads the real page scripts of the extension, so the
+  Export button and its menu in the store images are the real ones. A fake React fiber on the table
+  hands them the data frame, the way Grafana's own React tree does.
+  scripts/renderStoreImages.ps1 captures it to store/graphics/screenshots/explore.png.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Explore demo</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1280px;
+        height: 800px;
+        margin: 0;
+        overflow: hidden;
+      }
+      body {
+        font:
+          14px/1.5 Inter,
+          'Segoe UI',
+          Helvetica,
+          Arial,
+          sans-serif;
+        color: #ccccdc;
+        background: #111217;
+      }
+      .topbar {
+        height: 48px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 20px;
+        border-bottom: 1px solid #22252b;
+        background: #181b1f;
+      }
+      .crumbs span + span::before {
+        content: '›';
+        margin: 0 8px;
+        color: #6e7079;
+      }
+      .toolbar {
+        display: flex;
+        justify-content: space-between;
+        padding: 14px 20px;
+      }
+      .pill {
+        display: inline-block;
+        padding: 6px 12px;
+        border: 1px solid #2d3037;
+        border-radius: 4px;
+        background: #181b1f;
+      }
+      .run {
+        color: #fff;
+        border-color: #3d71d9;
+        background: #3d71d9;
+      }
+      .card {
+        margin: 0 20px 16px;
+        border: 1px solid #22252b;
+        border-radius: 4px;
+        background: #181b1f;
+      }
+      .query-head {
+        padding: 8px 14px;
+        color: #6e9fff;
+        font-weight: 600;
+        border-bottom: 1px solid #22252b;
+      }
+      pre {
+        margin: 0;
+        padding: 12px 14px;
+        font:
+          14px/1.6 Consolas,
+          'Courier New',
+          monospace;
+        color: #d8d9da;
+        background: #111217;
+        border: 1px solid #22252b;
+        margin: 12px 14px 14px;
+      }
+      .kw {
+        color: #6e9fff;
+      }
+      .fn {
+        color: #ff66d4;
+      }
+      .str {
+        color: #ff8080;
+      }
+      .title {
+        padding: 10px 14px;
+        font-weight: 500;
+        color: #d8d9da;
+      }
+      [role='table'] {
+        margin: 0 14px 10px;
+      }
+      [role='row'] {
+        display: grid;
+        grid-template-columns: 1.4fr 1fr 1fr 1fr 1.2fr;
+        border-bottom: 1px solid #22252b;
+      }
+      [role='columnheader'],
+      [role='cell'] {
+        padding: 7px 8px;
+      }
+      [role='columnheader'] {
+        font-weight: 600;
+        color: #d8d9da;
+      }
+      .num {
+        text-align: right;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <div class="crumbs"><span>Home</span><span>Explore</span><span>postgres</span></div>
+    </div>
+    <div class="toolbar">
+      <span class="pill">postgres ▾</span>
+      <span><span class="pill">Last 7 days</span> <span class="pill run">Run query</span></span>
+    </div>
+    <div class="card">
+      <div class="query-head">A <span style="color: #8e8e8e; font-weight: 400">(postgres)</span></div>
+      <pre><span class="kw">SELECT</span> region, <span class="fn">count</span>(*) <span class="kw">AS</span> orders, <span class="fn">sum</span>(total) <span class="kw">AS</span> revenue,
+       <span class="fn">avg</span>(delivery_days) <span class="kw">AS</span> avg_days, <span class="fn">max</span>(created_at) <span class="kw">AS</span> last_order
+<span class="kw">FROM</span> orders <span class="kw">WHERE</span> created_at > <span class="fn">now</span>() - <span class="str">'7 days'</span>
+<span class="kw">GROUP BY</span> region <span class="kw">ORDER BY</span> revenue <span class="kw">DESC</span>;</pre>
+    </div>
+    <section class="card" data-testid="section-wrapper-Table-demo">
+      <div class="title">Table</div>
+      <div>
+        <div role="table" aria-label="Explore Table" id="table"></div>
+      </div>
+    </section>
+
+    <script>
+      // The made-up result. `display` adds the units, the way a Grafana field config does.
+      const rows = [
+        ['Europe West', 1284, 48210.5, 2.4, Date.UTC(2026, 10, 16, 21, 4)],
+        ['North America', 1102, 45120.25, 3.1, Date.UTC(2026, 10, 16, 23, 41)],
+        ['Asia Pacific', 876, 31877.8, 4.6, Date.UTC(2026, 10, 16, 22, 15)],
+        ['Europe North', 412, 15203.4, 2.1, Date.UTC(2026, 10, 16, 20, 2)],
+        ['South America', 305, 9876.0, 5.2, Date.UTC(2026, 10, 16, 18, 37)],
+        ['Africa', 141, 4230.9, 6.8, Date.UTC(2026, 10, 16, 17, 55)],
+      ];
+      const money = (value) => ({ prefix: '$', text: value.toLocaleString('en-US', { minimumFractionDigits: 2 }) });
+      const time = (value) => ({ text: new Date(value).toISOString().slice(0, 16).replace('T', ' ') });
+      const frame = {
+        refId: 'A',
+        length: rows.length,
+        meta: { executedQueryString: document.querySelector('pre').textContent },
+        fields: [
+          { name: 'region', type: 'string', values: rows.map((row) => row[0]) },
+          { name: 'orders', type: 'number', values: rows.map((row) => row[1]) },
+          { name: 'revenue', type: 'number', values: rows.map((row) => row[2]), display: money },
+          {
+            name: 'avg_days',
+            type: 'number',
+            values: rows.map((row) => row[3]),
+            display: (v) => ({ text: String(v), suffix: ' d' }),
+          },
+          { name: 'last_order', type: 'time', values: rows.map((row) => row[4]), display: time },
+        ],
+      };
+
+      const table = document.getElementById('table');
+      const cell = (role, text, className) => {
+        const element = document.createElement('div');
+        element.setAttribute('role', role);
+        element.textContent = text;
+        if (className) element.className = className;
+        return element;
+      };
+      const header = cell('row', '');
+      for (const field of frame.fields)
+        header.appendChild(cell('columnheader', field.name, field.type === 'number' ? 'num' : ''));
+      table.appendChild(header);
+      for (let index = 0; index < rows.length; index++) {
+        const row = cell('row', '');
+        for (const field of frame.fields) {
+          const value = field.values[index];
+          const shown = field.display ? field.display(value) : { text: String(value) };
+          row.appendChild(
+            cell('cell', (shown.prefix ?? '') + shown.text + (shown.suffix ?? ''), field.type === 'number' ? 'num' : ''),
+          );
+        }
+        table.appendChild(row);
+      }
+      table.__reactFiber$demo = { memoizedProps: { role: 'table' }, return: { memoizedProps: { data: frame } } };
+    </script>
+    <script src="../../../src/page/exportFormats.js"></script>
+    <script src="../../../src/page/grafanaFrames.js"></script>
+    <script src="../../../src/page/exportMenu.js"></script>
+    <script src="../../../src/page/pageEntry.js"></script>
+    <script>
+      // Open the real menu for the capture, unless the page is opened with ?closed. The screenshot step of
+      // headless Chrome resizes the window, and a resize closes the menu. So keep a static copy of it.
+      if (!location.search.includes('closed')) {
+        document.querySelector('[data-grafana-table-export] button').click();
+        const menu = [...document.body.children].find((element) => element.style.zIndex === '2147483646');
+        if (menu) {
+          const copy = menu.cloneNode(true);
+          copy.style.zIndex = '2147483645';
+          document.body.appendChild(copy);
+        }
+      }
+    </script>
+  </body>
+</html>

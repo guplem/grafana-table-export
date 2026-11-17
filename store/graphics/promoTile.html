@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="storeStyles.css" />
+    <style>
+      html,
+      body {
+        width: 440px;
+        height: 280px;
+      }
+      .wrap {
+        position: absolute;
+        inset: 0;
+        padding: 30px 34px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+      .brand {
+        font-size: 22px;
+      }
+      .brand img {
+        width: 60px;
+        height: 60px;
+      }
+      h1 {
+        font-size: 31px;
+        font-weight: 800;
+        line-height: 1.15;
+        margin-top: 20px;
+        letter-spacing: -0.5px;
+      }
+      .formats {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .formats span {
+        padding: 3px 10px;
+        border-radius: 6px;
+        background: rgba(244, 104, 0, 0.18);
+        color: #ffb27a;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="brand"><img src="../../icons/icon128.png" alt="" />Table Export for Grafana</div>
+      <h1>Every row, <span class="accent">one click.</span></h1>
+      <div class="formats"><span>MD</span><span>CSV</span><span>TSV</span><span>JSON</span><span>TXT</span></div>
+    </div>
+  </body>
+</html>
