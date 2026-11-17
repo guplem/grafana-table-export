@@ -1,0 +1,16 @@
+node_modules/
+coverage/
+dist/
+*.zip
+*.log
+.DS_Store
+.env.local
+
+# Local review notes.
+.reviews/
+
+# Agent worktrees (Claude Code)
+.claude/worktrees/
+
+# Claude Code's copy of .agents/skills/ (scripts/syncSkills.js makes it)
+.claude/skills/

@@ -1,0 +1,8 @@
+node_modules/
+package-lock.json
+icons/
+store/images/
+coverage/
+dist/
+.claude/skills/
+.reviews/
