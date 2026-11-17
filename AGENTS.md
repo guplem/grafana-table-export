@@ -68,6 +68,8 @@ How a site gets the page scripts:
 - **A page script runs twice when the service worker injects it into a tab that already has it.** Each file declares a global constant, so the second copy throws. The service worker checks for `GrafanaTableExportFormats` before it injects.
 - **The Explore table section clips its children** (`overflow: hidden`). The menu lives on `document.body` with a fixed position, and closes on a scroll or a resize.
 - **The `section-wrapper-Table` test id is not on every Grafana build.** `findTitleBar` finds the "Table" title by its text instead.
+- **A scan can run before Grafana renders the "Table" title.** That scan puts the button in a fallback host. `buttonsAround` looks at every level up to the title host, so a later scan moves the button and adds no second one.
+- **Headless Chrome with `--virtual-time-budget` runs no `requestAnimationFrame`,** so the page scan runs only once. A headless test page must replace it with `setTimeout`.
 - **Headless Chrome resizes the window before `--screenshot`,** and a resize closes the menu. `store/graphics/demo/explore.html` keeps a static copy of the open menu for the capture.
 - **`node:vm` objects have their own prototypes.** Compare them with `plain()` from `test/support/pageScripts.js` before `assert.deepEqual`.
 - **Windows PowerShell 5.1 `Compress-Archive` writes `\` into zip entry names,** and the Web Store refuses such a zip. `packageExtension.ps1` writes each entry by hand.

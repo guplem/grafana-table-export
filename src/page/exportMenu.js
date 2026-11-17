@@ -5,6 +5,8 @@ const GrafanaTableExportMenu = (() => {
   const TABLE_SELECTOR = '[aria-label="Explore Table"]';
   const SECTION_SELECTOR = '[data-testid^="section-wrapper-Table"]';
   const BUTTON_MARK = 'data-grafana-table-export';
+  /** The mark of the button before version 0.1.0. */
+  const LEGACY_BUTTON_MARK = 'data-gte-export';
   const PREFERENCES_KEY = 'grafanaTableExport.preferences';
   const FONT = '13px/1.4 Inter, Helvetica, Arial, sans-serif';
 
@@ -275,18 +277,56 @@ const GrafanaTableExportMenu = (() => {
   }
 
   /**
-   * Adds the Export button to the section of one table, once. A second call only moves it back in place.
+   * Finds the buttons that a scan already put between the table and `host`.
+   * A scan can run before Grafana renders the "Table" title. That scan puts the button in a fallback host
+   * nearer to the table, so look at each level, not only in `host`.
+   * @param {Element} tableElement
+   * @param {Element} host
+   * @returns {HTMLElement[]}
+   */
+  function buttonsAround(tableElement, host) {
+    /** @type {HTMLElement[]} */
+    const found = [];
+    for (let level = tableElement.parentElement; level !== null; level = level.parentElement) {
+      for (const child of level.children) {
+        if (child instanceof HTMLElement && (child.hasAttribute(BUTTON_MARK) || child.hasAttribute(LEGACY_BUTTON_MARK))) {
+          found.push(child);
+        }
+      }
+      if (level === host) break;
+    }
+    return found;
+  }
+
+  /** @param {HTMLElement} host */
+  function prepareHost(host) {
+    if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+  }
+
+  /**
+   * Adds the Export button to the section of one table, once. A later call moves it to the title bar
+   * when Grafana renders the title after the first call.
    * @param {Element} tableElement
    */
   function attachExportButton(tableElement) {
     const { host, header } = findTitleBar(tableElement);
     if (!(host instanceof HTMLElement)) return;
-    const existing = host.querySelector(`:scope > [${BUTTON_MARK}]`);
-    if (existing instanceof HTMLElement) {
-      placeContainer(existing, host, header);
+    const [kept, ...extra] = buttonsAround(tableElement, host).filter((button) => {
+      // A tab that was open during an extension update can keep a button of an older version.
+      if (button.hasAttribute(BUTTON_MARK)) return true;
+      button.remove();
+      return false;
+    });
+    extra.forEach((button) => button.remove());
+    if (kept !== undefined) {
+      if (kept.parentElement !== host) {
+        prepareHost(host);
+        host.appendChild(kept);
+      }
+      placeContainer(kept, host, header);
       return;
     }
-    if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+    prepareHost(host);
 
     const container = document.createElement('div');
     container.setAttribute(BUTTON_MARK, '');
@@ -326,8 +366,9 @@ const GrafanaTableExportMenu = (() => {
         close();
         return;
       }
-      // Grafana renders the table again after each query, so look it up at click time.
-      const currentTable = host.querySelector(TABLE_SELECTOR) ?? tableElement;
+      // Grafana renders the table again after each query, and a later scan can move the button to
+      // another host. So look the table up at click time, from where the button is now.
+      const currentTable = container.parentElement?.querySelector(TABLE_SELECTOR) ?? tableElement;
       menu = buildMenu(currentTable, close);
       menu.style.visibility = 'hidden';
       document.body.appendChild(menu);
