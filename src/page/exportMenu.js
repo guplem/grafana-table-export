@@ -5,6 +5,8 @@ const GrafanaTableExportMenu = (() => {
   const TABLE_SELECTOR = '[aria-label="Explore Table"]';
   const SECTION_SELECTOR = '[data-testid^="section-wrapper-Table"]';
   const BUTTON_MARK = 'data-grafana-table-export';
+  /** How many levels above the table the title bar and the button can be. */
+  const MAX_SECTION_DEPTH = 12;
   /** The mark of the button before version 0.1.0. */
   const LEGACY_BUTTON_MARK = 'data-gte-export';
   const PREFERENCES_KEY = 'grafanaTableExport.preferences';
@@ -229,15 +231,19 @@ const GrafanaTableExportMenu = (() => {
    */
   function findTitleBar(tableElement) {
     let child = tableElement;
-    for (let depth = 0; depth < 12 && child.parentElement; depth++) {
+    for (let depth = 0; depth < MAX_SECTION_DEPTH && child.parentElement; depth++) {
       const parent = child.parentElement;
+      if (holdsOtherTable(parent, tableElement)) break;
       for (const sibling of parent.children) {
         if (sibling === child) break;
         if (/^Table\b/.test((sibling.textContent ?? '').trim())) return { host: parent, header: sibling };
       }
       child = parent;
     }
-    return { host: tableElement.closest(SECTION_SELECTOR) ?? tableElement.parentElement, header: null };
+    // `buttonsAround` must find the button on the next scan, so the fallback host holds no other table.
+    const section = tableElement.closest(SECTION_SELECTOR);
+    const host = section !== null && !holdsOtherTable(section, tableElement) ? section : tableElement.parentElement;
+    return { host, header: null };
   }
 
   /**
@@ -277,23 +283,33 @@ const GrafanaTableExportMenu = (() => {
   }
 
   /**
-   * Finds the buttons that a scan already put between the table and `host`.
-   * A scan can run before Grafana renders the "Table" title. That scan puts the button in a fallback host
-   * nearer to the table, so look at each level, not only in `host`.
+   * @param {Element} level
    * @param {Element} tableElement
-   * @param {Element} host
+   * @returns {boolean} `true` when `level` also holds another Explore table, such as the other pane of a split view.
+   */
+  function holdsOtherTable(level, tableElement) {
+    return [...level.querySelectorAll(TABLE_SELECTOR)].some((table) => table !== tableElement);
+  }
+
+  /**
+   * Finds the buttons that a scan already put in the section of this table, at any level.
+   * The title host can change between scans: Grafana can render the "Table" title after the first scan,
+   * or render it again later. So look at every level of the section, not only in the current host.
+   * The walk stops below a level that holds another table, so it never takes the button of another pane.
+   * @param {Element} tableElement
    * @returns {HTMLElement[]}
    */
-  function buttonsAround(tableElement, host) {
+  function buttonsAround(tableElement) {
     /** @type {HTMLElement[]} */
     const found = [];
-    for (let level = tableElement.parentElement; level !== null; level = level.parentElement) {
+    let level = tableElement.parentElement;
+    for (let depth = 0; level !== null && depth < MAX_SECTION_DEPTH; depth++, level = level.parentElement) {
+      if (holdsOtherTable(level, tableElement)) break;
       for (const child of level.children) {
         if (child instanceof HTMLElement && (child.hasAttribute(BUTTON_MARK) || child.hasAttribute(LEGACY_BUTTON_MARK))) {
           found.push(child);
         }
       }
-      if (level === host) break;
     }
     return found;
   }
@@ -311,7 +327,7 @@ const GrafanaTableExportMenu = (() => {
   function attachExportButton(tableElement) {
     const { host, header } = findTitleBar(tableElement);
     if (!(host instanceof HTMLElement)) return;
-    const [kept, ...extra] = buttonsAround(tableElement, host).filter((button) => {
+    const [kept, ...extra] = buttonsAround(tableElement).filter((button) => {
       // A tab that was open during an extension update can keep a button of an older version.
       if (button.hasAttribute(BUTTON_MARK)) return true;
       button.remove();
@@ -319,7 +335,8 @@ const GrafanaTableExportMenu = (() => {
     });
     extra.forEach((button) => button.remove());
     if (kept !== undefined) {
-      if (kept.parentElement !== host) {
+      // Move the button only to a title bar. Without a title, a fallback host is no better than where it is.
+      if (header !== null && kept.parentElement !== host) {
         prepareHost(host);
         host.appendChild(kept);
       }
