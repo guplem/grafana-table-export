@@ -6,14 +6,16 @@ A Chrome extension for Grafana Explore. It adds an **Export** button above each 
 
 ## Install
 
-The extension is not in the Chrome Web Store yet. Load it from this folder. There is no build step, so the repository folder **is** the extension folder.
+The extension is not in the Chrome Web Store yet. Load it unpacked. There is no build step, so the repository folder **is** the extension folder.
 
-1. Download or clone this repository.
+1. Get the files in one of two ways:
+   - Download the zip of the [latest release](https://github.com/guplem/grafana-table-export/releases/latest), and unzip it into a folder that you keep.
+   - Clone this repository.
 2. Open `chrome://extensions` in Chrome.
 3. Turn on **Developer mode** (top right).
 4. Press **Load unpacked** and pick the folder that holds `manifest.json`.
 
-After you pull a new version, press the reload arrow on the extension card, then reload the Grafana tab.
+Chrome loads the extension from that folder each time, so do not delete it. After you pull or unzip a new version into it, press the reload arrow on the extension card, then reload the Grafana tab.
 
 ## Turn it on for your Grafana
 
