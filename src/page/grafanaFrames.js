@@ -1,5 +1,6 @@
 // Page script (classic, MAIN world): it shares one global scope with the other page scripts.
-// The only file that knows Grafana's data shapes. Pure logic over plain objects, so Node tests it.
+// The only file that knows Grafana's shapes: the data frame, and the elements that hold it.
+// It reads plain objects and plain elements, so Node tests it with the fake DOM of `test/support/`.
 
 /**
  * One column of a Grafana DataFrame. Only the parts that the export reads.
@@ -25,6 +26,22 @@ const GrafanaTableExportFrames = (() => {
   // The data frame sits a few components above the table element. The limit stops a walk to the root.
   const MAX_FIBER_DEPTH = 40;
 
+  // Grafana 12.3 and earlier: Explore rendered its own table, with this label on it.
+  const LABELLED_TABLE_SELECTOR = '[aria-label="Explore Table"]';
+  // Grafana 12.4 and later: Explore renders the table panel, which draws a react-data-grid.
+  const GRID_SELECTOR = '[role="grid"]';
+  const TABLE_SELECTOR = `${LABELLED_TABLE_SELECTOR}, ${GRID_SELECTOR}`;
+  // The table panel also runs in a dashboard. Only Explore gets an Export button.
+  const EXPLORE_SELECTOR = '[data-testid="data-testid Explore"]';
+  // The section of the table. Grafana 12.3 and earlier named it `section-wrapper-Table`. Grafana 12.4
+  // and later name it `data-testid Panel header <title>`.
+  const SECTION_SELECTOR = '[data-testid^="section-wrapper-Table"], [data-testid^="data-testid Panel header"]';
+  // The title bar of the section. Grafana 11 named it `header-container`. Grafana 12 and later name it
+  // `data-testid header-container`.
+  const TITLE_BAR_SELECTOR = '[data-testid$="header-container"]';
+  // The title that Explore gives the panel: "Table", or "Table - <name>" with more than one frame.
+  const TITLE_PATTERN = /^Table\b/;
+
   /**
    * @param {unknown} value
    * @returns {value is GrafanaDataFrame}
@@ -36,7 +53,7 @@ const GrafanaTableExportFrames = (() => {
   /**
    * The DOM holds only the visible rows, so read the full frame from the React props of the table.
    * Match the prop shape, never a component name: Grafana minifies the names and they change in each build.
-   * @param {object} tableElement The `[aria-label="Explore Table"]` element.
+   * @param {object} tableElement A table element that `findTables` returned.
    * @returns {GrafanaDataFrame | null}
    */
   function findDataFrame(tableElement) {
@@ -136,5 +153,71 @@ const GrafanaTableExportFrames = (() => {
     return `grafana-${refId}-${stamp}.${extension}`;
   }
 
-  return { findDataFrame, frameToTable, executedQuery, fileName };
+  /**
+   * @param {Element} element An element that `TABLE_SELECTOR` matched.
+   * @returns {boolean} `true` when the element is a result table of Explore.
+   */
+  function isResultTable(element) {
+    // The label named the result table of Explore by itself. Keep such a table even when it carries no
+    // frame, so a change to the data shape shows the error of the export, not a button that never comes.
+    if (element.matches(LABELLED_TABLE_SELECTOR)) return true;
+    // A dashboard draws the same grid, and react-data-grid draws a second, hidden grid to measure the
+    // scrollbar. The hidden grid carries no React fiber, so the walk up finds no frame.
+    return element.closest(EXPLORE_SELECTOR) !== null && findDataFrame(element) !== null;
+  }
+
+  /**
+   * The result tables inside `root`, one for each table that the person sees.
+   * @param {ParentNode} root The document, or one element of it.
+   * @returns {Element[]}
+   */
+  function findTables(root) {
+    const tables = [...root.querySelectorAll(TABLE_SELECTOR)].filter(isResultTable);
+    // One table can match twice, such as a labelled wrapper around a grid. Keep the outer element.
+    return tables.filter((table) => !tables.some((other) => other !== table && other.contains(table)));
+  }
+
+  /**
+   * The title bar of the section, among the siblings before the branch that holds the table.
+   * The text comes first: one level can hold the title bar of two sections, and only the text tells
+   * them apart. The test id comes second, because a translated interface reads "Tabla" or "Tabelle".
+   * Each rule takes the last match, which is the title bar nearest to the table.
+   * @param {Element} level
+   * @param {Element} branch The child of `level` that holds the table.
+   * @returns {Element | null}
+   */
+  function titleBarOf(level, branch) {
+    /** @type {Element | null} */
+    let byText = null;
+    /** @type {Element | null} */
+    let byTestId = null;
+    for (const sibling of level.children) {
+      if (sibling === branch) break;
+      if (TITLE_PATTERN.test((sibling.textContent ?? '').trim())) byText = sibling;
+      else if (sibling.matches(TITLE_BAR_SELECTOR)) byTestId = sibling;
+    }
+    return byText ?? byTestId;
+  }
+
+  /**
+   * @param {Element} tableElement
+   * @returns {Element | null} The section of Grafana that holds the table, with its title bar.
+   */
+  function sectionOf(tableElement) {
+    return tableElement.closest(SECTION_SELECTOR);
+  }
+
+  /**
+   * The result tables that belong to another section. One pane of a split view is one section.
+   * Two tables in one section share one Export button, so neither one stops the walk up of the other.
+   * @param {Element} tableElement
+   * @param {Element[]} tables Every result table of the page.
+   * @returns {Element[]}
+   */
+  function tablesOfOtherSections(tableElement, tables) {
+    const section = sectionOf(tableElement);
+    return tables.filter((table) => table !== tableElement && (section === null || !section.contains(table)));
+  }
+
+  return { findTables, sectionOf, tablesOfOtherSections, titleBarOf, findDataFrame, frameToTable, executedQuery, fileName };
 })();
