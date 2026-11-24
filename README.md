@@ -52,6 +52,8 @@ The menu has two options. The extension remembers them for each Grafana site.
 **The Export button does not show.**
 Open the popup on that tab. If it says "Off", turn it on. If it says "On", run the query again, or reload the tab.
 
+The extension knows the result table of Grafana 11 and later. Grafana 12.4 changed that table, and Grafana 13 keeps the new one. A newer Grafana can change it again: open an issue with your Grafana version.
+
 **The export says "could not read the table data".**
 A Grafana update can change how Grafana keeps the result. Open an issue with your Grafana version (in **Help**, the `?` icon).
 
