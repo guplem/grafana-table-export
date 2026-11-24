@@ -9,7 +9,8 @@
   pageWindow[started] = true;
 
   function scan() {
-    GrafanaTableExportFrames.findTables(document).forEach(GrafanaTableExportMenu.attachExportButton);
+    const tables = GrafanaTableExportFrames.findTables(document);
+    tables.forEach((table) => GrafanaTableExportMenu.attachExportButton(table, tables));
   }
 
   // Explore is a single-page app: a query, a page change or a split view renders a new table.

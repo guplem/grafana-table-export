@@ -27,11 +27,13 @@ export class FakeElement {
    * @param {object} parts
    * @param {Record<string, string>} [parts.attributes]
    * @param {FakeElement[]} [parts.children]
+   * @param {string} [parts.text] The text of this element, without the text of its children.
    * @param {object} [parts.frame] The data frame that the React fiber of this element leads to.
    */
-  constructor({ attributes = {}, children = [], frame } = {}) {
+  constructor({ attributes = {}, children = [], text = '', frame } = {}) {
     this.attributes = attributes;
     this.children = children;
+    this.ownText = text;
     /** @type {FakeElement | null} */
     this.parentElement = null;
     for (const child of children) child.parentElement = this;
@@ -39,6 +41,11 @@ export class FakeElement {
       // The real table sits a few components below the frame, so the walk up needs more than one step.
       this['__reactFiber$fake'] = { memoizedProps: {}, return: { memoizedProps: { data: frame } } };
     }
+  }
+
+  /** @returns {string} The text of this element and of every element below it, as a browser gives it. */
+  get textContent() {
+    return this.ownText + this.children.map((child) => child.textContent).join('');
   }
 
   /**

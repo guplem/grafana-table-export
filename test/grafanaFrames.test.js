@@ -98,7 +98,7 @@ function explorePage(frames) {
         new FakeElement({
           attributes: { 'data-testid': 'data-testid Panel header Table' },
           children: [
-            new FakeElement({ attributes: { 'data-testid': 'data-testid header-container' } }),
+            new FakeElement({ attributes: { 'data-testid': 'data-testid header-container' }, text: 'Table' }),
             new FakeElement({
               attributes: { 'data-testid': 'data-testid panel content' },
               children: [
@@ -133,10 +133,17 @@ test('findTables finds the table of Grafana 12.3 and earlier by its label', () =
 test('findTables keeps the outer element when a label holds a grid', () => {
   const grid = new FakeElement({ attributes: { role: 'grid' }, frame: sampleFrame() });
   const labelled = new FakeElement({ attributes: { 'aria-label': 'Explore Table' }, frame: sampleFrame(), children: [grid] });
-  const page = new FakeElement({ children: [labelled] });
+  // Both elements are tables on their own: the grid sits in Explore, and the label needs no Explore.
+  const page = new FakeElement({ attributes: { 'data-testid': 'data-testid Explore' }, children: [labelled] });
   const found = frames.findTables(page);
   assert.equal(found.length, 1);
   assert.equal(found.at(0), labelled);
+});
+
+test('findTables keeps a labelled table that carries no frame, so the export can report the error', () => {
+  const table = new FakeElement({ attributes: { 'aria-label': 'Explore Table' } });
+  const page = new FakeElement({ children: [table] });
+  assert.equal(frames.findTables(page).at(0), table);
 });
 
 test('findTables skips a table panel outside Explore, such as one in a dashboard', () => {
@@ -145,4 +152,38 @@ test('findTables skips a table panel outside Explore, such as one in a dashboard
     children: [new FakeElement({ attributes: { role: 'grid' }, frame: sampleFrame() })],
   });
   assert.equal(frames.findTables(dashboard).length, 0);
+});
+
+test('findTables finds nothing on a page with no result', () => {
+  assert.equal(frames.findTables(explorePage([])).length, 0);
+});
+
+test('titleBarOf takes the title bar of the panel of this table, not of the panel above it', () => {
+  const graphTitle = new FakeElement({ attributes: { 'data-testid': 'data-testid header-container' }, text: 'Graph' });
+  const graph = new FakeElement({ attributes: { 'data-testid': 'data-testid panel content' } });
+  const tableTitle = new FakeElement({ attributes: { 'data-testid': 'data-testid header-container' }, text: 'Table' });
+  const table = new FakeElement({ attributes: { 'data-testid': 'data-testid panel content' } });
+  const pane = new FakeElement({ children: [graphTitle, graph, tableTitle, table] });
+  assert.equal(frames.titleBarOf(pane, table), tableTitle);
+});
+
+test('titleBarOf takes the title bar by its test id when the title is translated', () => {
+  const title = new FakeElement({ attributes: { 'data-testid': 'header-container' }, text: 'Tabla' });
+  const content = new FakeElement({ attributes: { 'data-testid': 'data-testid panel content' } });
+  const section = new FakeElement({ children: [title, content] });
+  assert.equal(frames.titleBarOf(section, content), title);
+});
+
+test('titleBarOf reads the text of the elements below the sibling', () => {
+  const title = new FakeElement({ children: [new FakeElement({ text: 'Table - orders' })] });
+  const content = new FakeElement({});
+  const section = new FakeElement({ children: [title, content] });
+  assert.equal(frames.titleBarOf(section, content), title);
+});
+
+test('titleBarOf gives null with no title bar, and looks at no sibling after the branch', () => {
+  const content = new FakeElement({});
+  const late = new FakeElement({ attributes: { 'data-testid': 'data-testid header-container' }, text: 'Table' });
+  const section = new FakeElement({ children: [new FakeElement({ text: 'Graph' }), content, late] });
+  assert.equal(frames.titleBarOf(section, content), null);
 });

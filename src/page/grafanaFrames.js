@@ -1,5 +1,6 @@
 // Page script (classic, MAIN world): it shares one global scope with the other page scripts.
-// The only file that knows Grafana's data shapes. Pure logic over plain objects, so Node tests it.
+// The only file that knows Grafana's shapes: the data frame, and the elements that hold it.
+// It reads plain objects and plain elements, so Node tests it with a fake DOM.
 
 /**
  * One column of a Grafana DataFrame. Only the parts that the export reads.
@@ -32,6 +33,11 @@ const GrafanaTableExportFrames = (() => {
   const TABLE_SELECTOR = `${LABELLED_TABLE_SELECTOR}, ${GRID_SELECTOR}`;
   // The table panel also runs in a dashboard. Only Explore gets an Export button.
   const EXPLORE_SELECTOR = '[data-testid="data-testid Explore"]';
+  // The title bar of the panel. Grafana 11 named it `header-container`. Grafana 12 and later name it
+  // `data-testid header-container`.
+  const HEADER_SELECTOR = '[data-testid$="header-container"]';
+  // The title that Explore gives the panel: "Table", or "Table - <name>" with more than one frame.
+  const TITLE_PATTERN = /^Table\b/;
 
   /**
    * @param {unknown} value
@@ -44,7 +50,7 @@ const GrafanaTableExportFrames = (() => {
   /**
    * The DOM holds only the visible rows, so read the full frame from the React props of the table.
    * Match the prop shape, never a component name: Grafana minifies the names and they change in each build.
-   * @param {object} tableElement The `[aria-label="Explore Table"]` element.
+   * @param {object} tableElement A table element that `findTables` returned.
    * @returns {GrafanaDataFrame | null}
    */
   function findDataFrame(tableElement) {
@@ -149,10 +155,12 @@ const GrafanaTableExportFrames = (() => {
    * @returns {boolean} `true` when the element is a result table of Explore.
    */
   function isResultTable(element) {
-    // The label named Explore by itself. The grid does not, and a dashboard draws the same grid.
-    if (!element.matches(LABELLED_TABLE_SELECTOR) && element.closest(EXPLORE_SELECTOR) === null) return false;
-    // react-data-grid draws a second, hidden grid to measure the scrollbar. No React props stand behind it.
-    return findDataFrame(element) !== null;
+    // The label named the result table of Explore by itself. Keep such a table even when it carries no
+    // frame, so a change to the data shape shows the error of the export, not a button that never comes.
+    if (element.matches(LABELLED_TABLE_SELECTOR)) return true;
+    // A dashboard draws the same grid, and react-data-grid draws a second, hidden grid to measure the
+    // scrollbar. The hidden grid has no React fiber, so no frame stands behind it.
+    return element.closest(EXPLORE_SELECTOR) !== null && findDataFrame(element) !== null;
   }
 
   /**
@@ -166,5 +174,24 @@ const GrafanaTableExportFrames = (() => {
     return tables.filter((table) => !tables.some((other) => other !== table && other.contains(table)));
   }
 
-  return { findTables, findDataFrame, frameToTable, executedQuery, fileName };
+  /**
+   * The title bar of the panel, among the siblings before the branch that holds the table.
+   * The text comes first: one level can hold the title bar of two panels, and only the text tells them
+   * apart. The test id comes second, because a translated interface reads "Tabla" or "Tabelle".
+   * @param {Element} parent
+   * @param {Element} branch The child of `parent` that holds the table.
+   * @returns {Element | null}
+   */
+  function titleBarOf(parent, branch) {
+    /** @type {Element | null} */
+    let byTestId = null;
+    for (const sibling of parent.children) {
+      if (sibling === branch) break;
+      if (TITLE_PATTERN.test((sibling.textContent ?? '').trim())) return sibling;
+      if (byTestId === null && sibling.matches(HEADER_SELECTOR)) byTestId = sibling;
+    }
+    return byTestId;
+  }
+
+  return { findTables, titleBarOf, findDataFrame, frameToTable, executedQuery, fileName };
 })();
