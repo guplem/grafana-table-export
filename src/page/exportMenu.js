@@ -225,7 +225,7 @@ const GrafanaTableExportMenu = (() => {
    * Finds the title bar above the table: walk up from the table, and at each level look at the siblings
    * before the branch that holds the table. The button goes in `host`, on the line of `header`.
    * @param {Element} tableElement
-   * @param {Element[]} others The result tables of the other panels.
+   * @param {Element[]} others The result tables of the other sections.
    * @returns {{ host: Element | null, header: Element | null }}
    */
   function findTitleBar(tableElement, others) {
@@ -294,7 +294,7 @@ const GrafanaTableExportMenu = (() => {
    * or render it again later. So look at every level of the section, not only in the current host.
    * The walk stops below a level that holds another table, so it never takes the button of another pane.
    * @param {Element} tableElement
-   * @param {Element[]} others The result tables of the other panels.
+   * @param {Element[]} others The result tables of the other sections.
    * @returns {HTMLElement[]}
    */
   function buttonsAround(tableElement, others) {
@@ -321,11 +321,10 @@ const GrafanaTableExportMenu = (() => {
    * Adds the Export button to the section of one table, once. A later call moves it to the title bar
    * when Grafana renders the title after the first call.
    * @param {Element} tableElement
-   * @param {Element[]} [tables] Every result table of the page. One scan finds them once for all of them.
+   * @param {Element[]} tables Every result table of the page. One scan finds them once for all of them.
    */
   function attachExportButton(tableElement, tables) {
-    const everyTable = tables ?? GrafanaTableExportFrames.findTables(document);
-    const others = GrafanaTableExportFrames.tablesOfOtherSections(tableElement, everyTable);
+    const others = GrafanaTableExportFrames.tablesOfOtherSections(tableElement, tables);
     const { host, header } = findTitleBar(tableElement, others);
     if (!(host instanceof HTMLElement)) return;
     const [kept, ...extra] = buttonsAround(tableElement, others).filter((button) => {
