@@ -1,9 +1,7 @@
 // Page script (classic, MAIN world): it shares one global scope with the other page scripts.
-// The Export button, its menu, and the copy and download actions. It builds, places and clears the DOM.
+// The Export button, its menu, and the copy and download actions. It builds, places and removes them.
 
 const GrafanaTableExportMenu = (() => {
-  // The panel of the table. Grafana 12.3 and earlier named it `section-wrapper-Table`.
-  const SECTION_SELECTOR = '[data-testid^="section-wrapper-Table"], [data-testid^="data-testid Panel header"]';
   const BUTTON_MARK = 'data-grafana-table-export';
   /** How many levels above the table the title bar and the button can be. */
   const MAX_SECTION_DEPTH = 12;
@@ -240,7 +238,7 @@ const GrafanaTableExportMenu = (() => {
       child = parent;
     }
     // `buttonsAround` must find the button on the next scan, so the fallback host holds no other table.
-    const section = tableElement.closest(SECTION_SELECTOR);
+    const section = GrafanaTableExportFrames.sectionOf(tableElement);
     const host = section !== null && !holdsOtherTable(section, others) ? section : tableElement.parentElement;
     return { host, header: null };
   }
@@ -283,23 +281,11 @@ const GrafanaTableExportMenu = (() => {
 
   /**
    * @param {Element} level
-   * @param {Element[]} others The result tables of the other panels.
-   * @returns {boolean} `true` when `level` also holds the table of another panel, such as the other pane of a split view.
+   * @param {Element[]} others The result tables of the other sections.
+   * @returns {boolean} `true` when `level` also holds the table of another section, such as the other pane of a split view.
    */
   function holdsOtherTable(level, others) {
     return others.some((table) => level.contains(table));
-  }
-
-  /**
-   * The result tables that belong to another panel. A pane of a split view is one panel.
-   * Two tables in one panel share one button, so neither one stops the walk of the other.
-   * @param {Element} tableElement
-   * @param {Element[]} tables Every result table of the page.
-   * @returns {Element[]}
-   */
-  function tablesOfOtherPanels(tableElement, tables) {
-    const section = tableElement.closest(SECTION_SELECTOR);
-    return tables.filter((table) => table !== tableElement && (section === null || !section.contains(table)));
   }
 
   /**
@@ -338,7 +324,8 @@ const GrafanaTableExportMenu = (() => {
    * @param {Element[]} [tables] Every result table of the page. One scan finds them once for all of them.
    */
   function attachExportButton(tableElement, tables) {
-    const others = tablesOfOtherPanels(tableElement, tables ?? GrafanaTableExportFrames.findTables(document));
+    const everyTable = tables ?? GrafanaTableExportFrames.findTables(document);
+    const others = GrafanaTableExportFrames.tablesOfOtherSections(tableElement, everyTable);
     const { host, header } = findTitleBar(tableElement, others);
     if (!(host instanceof HTMLElement)) return;
     const [kept, ...extra] = buttonsAround(tableElement, others).filter((button) => {

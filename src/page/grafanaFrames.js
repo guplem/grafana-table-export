@@ -1,6 +1,6 @@
 // Page script (classic, MAIN world): it shares one global scope with the other page scripts.
 // The only file that knows Grafana's shapes: the data frame, and the elements that hold it.
-// It reads plain objects and plain elements, so Node tests it with a fake DOM.
+// It reads plain objects and plain elements, so Node tests it with the fake DOM of `test/support/`.
 
 /**
  * One column of a Grafana DataFrame. Only the parts that the export reads.
@@ -33,9 +33,12 @@ const GrafanaTableExportFrames = (() => {
   const TABLE_SELECTOR = `${LABELLED_TABLE_SELECTOR}, ${GRID_SELECTOR}`;
   // The table panel also runs in a dashboard. Only Explore gets an Export button.
   const EXPLORE_SELECTOR = '[data-testid="data-testid Explore"]';
-  // The title bar of the panel. Grafana 11 named it `header-container`. Grafana 12 and later name it
+  // The section of the table. Grafana 12.3 and earlier named it `section-wrapper-Table`. Grafana 12.4
+  // and later name it `data-testid Panel header <title>`.
+  const SECTION_SELECTOR = '[data-testid^="section-wrapper-Table"], [data-testid^="data-testid Panel header"]';
+  // The title bar of the section. Grafana 11 named it `header-container`. Grafana 12 and later name it
   // `data-testid header-container`.
-  const HEADER_SELECTOR = '[data-testid$="header-container"]';
+  const TITLE_BAR_SELECTOR = '[data-testid$="header-container"]';
   // The title that Explore gives the panel: "Table", or "Table - <name>" with more than one frame.
   const TITLE_PATTERN = /^Table\b/;
 
@@ -159,7 +162,7 @@ const GrafanaTableExportFrames = (() => {
     // frame, so a change to the data shape shows the error of the export, not a button that never comes.
     if (element.matches(LABELLED_TABLE_SELECTOR)) return true;
     // A dashboard draws the same grid, and react-data-grid draws a second, hidden grid to measure the
-    // scrollbar. The hidden grid has no React fiber, so no frame stands behind it.
+    // scrollbar. The hidden grid carries no React fiber, so the walk up finds no frame.
     return element.closest(EXPLORE_SELECTOR) !== null && findDataFrame(element) !== null;
   }
 
@@ -175,23 +178,46 @@ const GrafanaTableExportFrames = (() => {
   }
 
   /**
-   * The title bar of the panel, among the siblings before the branch that holds the table.
-   * The text comes first: one level can hold the title bar of two panels, and only the text tells them
-   * apart. The test id comes second, because a translated interface reads "Tabla" or "Tabelle".
-   * @param {Element} parent
-   * @param {Element} branch The child of `parent` that holds the table.
+   * The title bar of the section, among the siblings before the branch that holds the table.
+   * The text comes first: one level can hold the title bar of two sections, and only the text tells
+   * them apart. The test id comes second, because a translated interface reads "Tabla" or "Tabelle".
+   * Each rule takes the last match, which is the title bar nearest to the table.
+   * @param {Element} level
+   * @param {Element} branch The child of `level` that holds the table.
    * @returns {Element | null}
    */
-  function titleBarOf(parent, branch) {
+  function titleBarOf(level, branch) {
+    /** @type {Element | null} */
+    let byText = null;
     /** @type {Element | null} */
     let byTestId = null;
-    for (const sibling of parent.children) {
+    for (const sibling of level.children) {
       if (sibling === branch) break;
-      if (TITLE_PATTERN.test((sibling.textContent ?? '').trim())) return sibling;
-      if (byTestId === null && sibling.matches(HEADER_SELECTOR)) byTestId = sibling;
+      if (TITLE_PATTERN.test((sibling.textContent ?? '').trim())) byText = sibling;
+      else if (sibling.matches(TITLE_BAR_SELECTOR)) byTestId = sibling;
     }
-    return byTestId;
+    return byText ?? byTestId;
   }
 
-  return { findTables, titleBarOf, findDataFrame, frameToTable, executedQuery, fileName };
+  /**
+   * @param {Element} tableElement
+   * @returns {Element | null} The section of Grafana that holds the table, with its title bar.
+   */
+  function sectionOf(tableElement) {
+    return tableElement.closest(SECTION_SELECTOR);
+  }
+
+  /**
+   * The result tables that belong to another section. One pane of a split view is one section.
+   * Two tables in one section share one Export button, so neither one stops the walk up of the other.
+   * @param {Element} tableElement
+   * @param {Element[]} tables Every result table of the page.
+   * @returns {Element[]}
+   */
+  function tablesOfOtherSections(tableElement, tables) {
+    const section = sectionOf(tableElement);
+    return tables.filter((table) => table !== tableElement && (section === null || !section.contains(table)));
+  }
+
+  return { findTables, sectionOf, tablesOfOtherSections, titleBarOf, findDataFrame, frameToTable, executedQuery, fileName };
 })();

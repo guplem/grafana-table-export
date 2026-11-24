@@ -87,13 +87,13 @@ test('executedQuery and fileName read the frame', () => {
 
 /**
  * The Explore page of Grafana 12.4 and later: the table panel holds a react-data-grid.
- * @param {object[]} frames One frame for each pane. A pane with no frame renders no table.
+ * @param {object[]} paneFrames One frame for each pane. A pane with no frame renders no table.
  * @returns {FakeElement} The Explore container.
  */
-function explorePage(frames) {
+function explorePage(paneFrames) {
   return new FakeElement({
     attributes: { 'data-testid': 'data-testid Explore' },
-    children: frames.map(
+    children: paneFrames.map(
       (frame) =>
         new FakeElement({
           attributes: { 'data-testid': 'data-testid Panel header Table' },
@@ -167,6 +167,15 @@ test('titleBarOf takes the title bar of the panel of this table, not of the pane
   assert.equal(frames.titleBarOf(pane, table), tableTitle);
 });
 
+test('titleBarOf takes the nearest title bar when every title is translated', () => {
+  const graphTitle = new FakeElement({ attributes: { 'data-testid': 'data-testid header-container' }, text: 'Gráfico' });
+  const graph = new FakeElement({ attributes: { 'data-testid': 'data-testid panel content' } });
+  const tableTitle = new FakeElement({ attributes: { 'data-testid': 'data-testid header-container' }, text: 'Tabla' });
+  const table = new FakeElement({ attributes: { 'data-testid': 'data-testid panel content' } });
+  const pane = new FakeElement({ children: [graphTitle, graph, tableTitle, table] });
+  assert.equal(frames.titleBarOf(pane, table), tableTitle);
+});
+
 test('titleBarOf takes the title bar by its test id when the title is translated', () => {
   const title = new FakeElement({ attributes: { 'data-testid': 'header-container' }, text: 'Tabla' });
   const content = new FakeElement({ attributes: { 'data-testid': 'data-testid panel content' } });
@@ -179,6 +188,29 @@ test('titleBarOf reads the text of the elements below the sibling', () => {
   const content = new FakeElement({});
   const section = new FakeElement({ children: [title, content] });
   assert.equal(frames.titleBarOf(section, content), title);
+});
+
+test('tablesOfOtherSections gives the table of the other pane of a split view', () => {
+  const page = explorePage([sampleFrame(), sampleFrame()]);
+  const [first, second] = frames.findTables(page);
+  assert.equal(frames.tablesOfOtherSections(first, [first, second]).at(0), second);
+});
+
+test('tablesOfOtherSections ignores a second table of the same section', () => {
+  const page = explorePage([sampleFrame()]);
+  const table = frames.findTables(page).at(0);
+  // A second grid of the same section, such as one that a later Grafana draws beside the first.
+  const twin = new FakeElement({ attributes: { role: 'grid' }, frame: sampleFrame() });
+  twin.parentElement = table.parentElement;
+  table.parentElement.children.push(twin);
+  assert.equal(frames.tablesOfOtherSections(table, [table, twin]).length, 0);
+});
+
+test('tablesOfOtherSections counts every other table when the page has no section', () => {
+  const first = new FakeElement({ attributes: { 'aria-label': 'Explore Table' } });
+  const second = new FakeElement({ attributes: { 'aria-label': 'Explore Table' } });
+  new FakeElement({ children: [first, second] });
+  assert.equal(frames.tablesOfOtherSections(first, [first, second]).at(0), second);
 });
 
 test('titleBarOf gives null with no title bar, and looks at no sibling after the branch', () => {
