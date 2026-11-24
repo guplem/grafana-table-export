@@ -67,9 +67,9 @@ How a site gets the page scripts:
 
 - **A page script runs twice when the service worker injects it into a tab that already has it.** Each file declares a global constant, so the second copy throws. The service worker checks for `GrafanaTableExportFormats` before it injects.
 - **The Explore table section clips its children** (`overflow: hidden`). The menu lives on `document.body` with a fixed position, and closes on a scroll or a resize.
-- **The `section-wrapper-Table` test id is not on every Grafana build.** `titleBarOf` finds the "Table" title by its text first, then by the `header-container` test id.
-- **Grafana 12.4 draws the Explore table with react-data-grid, and a hidden second `role="grid"` beside it.** That hidden grid measures the scrollbar. It has no React fiber, so `findTables` drops it.
-- **Two tables in one panel share one Export button.** `tablesOfOtherPanels` keeps the walk up from stopping at a second grid of the same panel. Without it, `buttonsAround` finds no button and each scan adds one more.
+- **The section of the table has no fixed test id.** Grafana 12.3 and earlier use `section-wrapper-Table`. Grafana 12.4 and later use `data-testid Panel header`. `titleBarOf` finds the title by its text first, then by the `header-container` test id.
+- **Grafana 12.4 draws the Explore table with react-data-grid, and a hidden second `role="grid"` beside it.** The hidden grid measures the scrollbar. It carries no React fiber, so `findTables` finds no frame and drops it.
+- **Two result tables in one section share one Export button.** `tablesOfOtherSections` ignores the other tables of the same section, so the walk up does not stop at them. A walk that stops at once finds no button, and each scan then adds one more.
 - **A scan can run before Grafana renders the "Table" title.** That scan puts the button in a fallback host. `buttonsAround` looks at every level of the section, so a later scan moves the button and adds no second one.
 - **A split view has two tables under one parent.** Each walk up from a table stops below a level that holds another table, so one pane never takes or deletes the button of the other.
 - **Headless Chrome with `--virtual-time-budget` runs no `requestAnimationFrame`,** so the page scan runs only once. A headless test page must replace it with `setTimeout`.
