@@ -195,6 +195,7 @@
         }
         table.appendChild(row);
       }
+      // The export reads this fake fiber. Without it the menu reports that it cannot read the table.
       table.__reactFiber$demo = { memoizedProps: { role: 'table' }, return: { memoizedProps: { data: frame } } };
     </script>
     <script src="../../../src/page/exportFormats.js"></script>
