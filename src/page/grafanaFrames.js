@@ -25,6 +25,14 @@ const GrafanaTableExportFrames = (() => {
   // The data frame sits a few components above the table element. The limit stops a walk to the root.
   const MAX_FIBER_DEPTH = 40;
 
+  // Grafana 12.3 and earlier: Explore rendered its own table, with this label on it.
+  const LABELLED_TABLE_SELECTOR = '[aria-label="Explore Table"]';
+  // Grafana 12.4 and later: Explore renders the table panel, which draws a react-data-grid.
+  const GRID_SELECTOR = '[role="grid"]';
+  const TABLE_SELECTOR = `${LABELLED_TABLE_SELECTOR}, ${GRID_SELECTOR}`;
+  // The table panel also runs in a dashboard. Only Explore gets an Export button.
+  const EXPLORE_SELECTOR = '[data-testid="data-testid Explore"]';
+
   /**
    * @param {unknown} value
    * @returns {value is GrafanaDataFrame}
@@ -136,5 +144,27 @@ const GrafanaTableExportFrames = (() => {
     return `grafana-${refId}-${stamp}.${extension}`;
   }
 
-  return { findDataFrame, frameToTable, executedQuery, fileName };
+  /**
+   * @param {Element} element An element that `TABLE_SELECTOR` matched.
+   * @returns {boolean} `true` when the element is a result table of Explore.
+   */
+  function isResultTable(element) {
+    // The label named Explore by itself. The grid does not, and a dashboard draws the same grid.
+    if (!element.matches(LABELLED_TABLE_SELECTOR) && element.closest(EXPLORE_SELECTOR) === null) return false;
+    // react-data-grid draws a second, hidden grid to measure the scrollbar. No React props stand behind it.
+    return findDataFrame(element) !== null;
+  }
+
+  /**
+   * The result tables inside `root`, one for each table that the person sees.
+   * @param {ParentNode} root The document, or one element of it.
+   * @returns {Element[]}
+   */
+  function findTables(root) {
+    const tables = [...root.querySelectorAll(TABLE_SELECTOR)].filter(isResultTable);
+    // One table can match twice, such as a labelled wrapper around a grid. Keep the outer element.
+    return tables.filter((table) => !tables.some((other) => other !== table && other.contains(table)));
+  }
+
+  return { findTables, findDataFrame, frameToTable, executedQuery, fileName };
 })();

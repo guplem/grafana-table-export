@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { FakeElement } from './support/fakeDom.js';
 import { loadPageScripts, plain } from './support/pageScripts.js';
 
 const frames = loadPageScripts(['src/page/grafanaFrames.js'], 'GrafanaTableExportFrames');
@@ -82,4 +83,66 @@ test('executedQuery and fileName read the frame', () => {
   assert.equal(frames.fileName(sampleFrame(), now, 'csv'), 'grafana-A-2026-11-17T09-12-45.csv');
   assert.equal(frames.fileName({ fields: [], refId: 'a b' }, now, 'md'), 'grafana-a_b-2026-11-17T09-12-45.md');
   assert.equal(frames.fileName({ fields: [] }, now, 'md'), 'grafana-result-2026-11-17T09-12-45.md');
+});
+
+/**
+ * The Explore page of Grafana 12.4 and later: the table panel holds a react-data-grid.
+ * @param {object[]} frames One frame for each pane. A pane with no frame renders no table.
+ * @returns {FakeElement} The Explore container.
+ */
+function explorePage(frames) {
+  return new FakeElement({
+    attributes: { 'data-testid': 'data-testid Explore' },
+    children: frames.map(
+      (frame) =>
+        new FakeElement({
+          attributes: { 'data-testid': 'data-testid Panel header Table' },
+          children: [
+            new FakeElement({ attributes: { 'data-testid': 'data-testid header-container' } }),
+            new FakeElement({
+              attributes: { 'data-testid': 'data-testid panel content' },
+              children: [
+                new FakeElement({ attributes: { role: 'grid', 'aria-rowcount': '2' }, frame }),
+                // react-data-grid renders a second, hidden grid to measure the scrollbar.
+                new FakeElement({ attributes: { role: 'grid' } }),
+              ],
+            }),
+          ],
+        }),
+    ),
+  });
+}
+
+test('findTables finds the table of Grafana 12.4 and later, and skips the grid that measures', () => {
+  const frame = sampleFrame();
+  const found = frames.findTables(explorePage([frame]));
+  assert.equal(found.length, 1);
+  assert.equal(frames.findDataFrame(found[0]), frame);
+});
+
+test('findTables finds one table for each pane of a split view', () => {
+  assert.equal(frames.findTables(explorePage([sampleFrame(), sampleFrame()])).length, 2);
+});
+
+test('findTables finds the table of Grafana 12.3 and earlier by its label', () => {
+  const table = new FakeElement({ attributes: { role: 'table', 'aria-label': 'Explore Table' }, frame: sampleFrame() });
+  const page = new FakeElement({ children: [table] });
+  assert.equal(frames.findTables(page).at(0), table);
+});
+
+test('findTables keeps the outer element when a label holds a grid', () => {
+  const grid = new FakeElement({ attributes: { role: 'grid' }, frame: sampleFrame() });
+  const labelled = new FakeElement({ attributes: { 'aria-label': 'Explore Table' }, frame: sampleFrame(), children: [grid] });
+  const page = new FakeElement({ children: [labelled] });
+  const found = frames.findTables(page);
+  assert.equal(found.length, 1);
+  assert.equal(found.at(0), labelled);
+});
+
+test('findTables skips a table panel outside Explore, such as one in a dashboard', () => {
+  const dashboard = new FakeElement({
+    attributes: { 'data-testid': 'data-testid dashboard' },
+    children: [new FakeElement({ attributes: { role: 'grid' }, frame: sampleFrame() })],
+  });
+  assert.equal(frames.findTables(dashboard).length, 0);
 });
