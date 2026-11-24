@@ -14,7 +14,7 @@ const ATTRIBUTE_SELECTOR = /^\[([a-z-]+)([$^]?)="(.*)"\]$/;
 function matchesOne(element, selector) {
   const parts = ATTRIBUTE_SELECTOR.exec(selector.trim());
   if (parts === null) throw new Error(`The fake DOM does not know the selector "${selector}".`);
-  const [, name, operator, wanted] = parts;
+  const [, name = '', operator, wanted = ''] = parts;
   const value = element.attributes[name];
   if (value === undefined) return false;
   if (operator === '^') return value.startsWith(wanted);

@@ -2,8 +2,10 @@
 // The Export button, its menu, and the copy and download actions. All DOM work lives here.
 
 const GrafanaTableExportMenu = (() => {
-  const TABLE_SELECTOR = '[aria-label="Explore Table"]';
-  const SECTION_SELECTOR = '[data-testid^="section-wrapper-Table"]';
+  // The panel of the table. Grafana 12.3 and earlier named it `section-wrapper-Table`.
+  const SECTION_SELECTOR = '[data-testid^="section-wrapper-Table"], [data-testid^="data-testid Panel header"]';
+  // The title bar of the panel. Grafana 11 named it `header-container`, Grafana 12 and later `data-testid header-container`.
+  const HEADER_SELECTOR = '[data-testid$="header-container"]';
   const BUTTON_MARK = 'data-grafana-table-export';
   /** How many levels above the table the title bar and the button can be. */
   const MAX_SECTION_DEPTH = 12;
@@ -236,7 +238,10 @@ const GrafanaTableExportMenu = (() => {
       if (holdsOtherTable(parent, tableElement)) break;
       for (const sibling of parent.children) {
         if (sibling === child) break;
-        if (/^Table\b/.test((sibling.textContent ?? '').trim())) return { host: parent, header: sibling };
+        // The test id also holds in a translated interface, where the title reads "Tabla" or "Tabelle".
+        if (sibling.matches(HEADER_SELECTOR) || /^Table\b/.test((sibling.textContent ?? '').trim())) {
+          return { host: parent, header: sibling };
+        }
       }
       child = parent;
     }
@@ -288,7 +293,7 @@ const GrafanaTableExportMenu = (() => {
    * @returns {boolean} `true` when `level` also holds another Explore table, such as the other pane of a split view.
    */
   function holdsOtherTable(level, tableElement) {
-    return [...level.querySelectorAll(TABLE_SELECTOR)].some((table) => table !== tableElement);
+    return GrafanaTableExportFrames.findTables(level).some((table) => table !== tableElement);
   }
 
   /**
@@ -385,7 +390,8 @@ const GrafanaTableExportMenu = (() => {
       }
       // Grafana renders the table again after each query, and a later scan can move the button to
       // another host. So look the table up at click time, from where the button is now.
-      const currentTable = container.parentElement?.querySelector(TABLE_SELECTOR) ?? tableElement;
+      const currentHost = container.parentElement;
+      const currentTable = (currentHost === null ? [] : GrafanaTableExportFrames.findTables(currentHost))[0] ?? tableElement;
       menu = buildMenu(currentTable, close);
       menu.style.visibility = 'hidden';
       document.body.appendChild(menu);
@@ -401,5 +407,5 @@ const GrafanaTableExportMenu = (() => {
     placeContainer(container, host, header);
   }
 
-  return { TABLE_SELECTOR, attachExportButton };
+  return { attachExportButton };
 })();
