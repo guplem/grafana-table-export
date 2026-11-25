@@ -146,12 +146,83 @@ test('findTables keeps a labelled table that carries no frame, so the export can
   assert.equal(frames.findTables(page).at(0), table);
 });
 
-test('findTables skips a table panel outside Explore, such as one in a dashboard', () => {
-  const dashboard = new FakeElement({
+/**
+ * A Grafana dashboard of 12.4 and later. Each panel is a section with a title bar and the menu
+ * button of Grafana. A panel with no title keeps the section and gets the hover header instead.
+ * @param {Array<{ frame?: object, title?: string }>} panels One entry for each panel.
+ * @returns {FakeElement} The dashboard element.
+ */
+function dashboardPage(panels) {
+  return new FakeElement({
     attributes: { 'data-testid': 'data-testid dashboard' },
+    children: panels.map(({ frame, title = 'Orders' }) => {
+      const titled = title !== '';
+      return new FakeElement({
+        attributes: { 'data-testid': `data-testid Panel header ${title}` },
+        children: [
+          new FakeElement({
+            attributes: { 'data-testid': titled ? 'data-testid header-container' : 'data-testid hover-header-container' },
+            text: title,
+            children: [
+              new FakeElement({
+                attributes: { 'data-testid': titled ? `data-testid Panel menu ${title}` : 'panel-menu-button' },
+              }),
+            ],
+          }),
+          new FakeElement({
+            attributes: { 'data-testid': 'data-testid panel content' },
+            children: [
+              new FakeElement({ attributes: { role: 'grid', 'aria-rowcount': '2' }, frame }),
+              // react-data-grid renders a second, hidden grid to measure the scrollbar.
+              new FakeElement({ attributes: { role: 'grid' } }),
+            ],
+          }),
+        ],
+      });
+    }),
+  });
+}
+
+test('findTables finds the table panel of a dashboard, one for each panel', () => {
+  const page = dashboardPage([{ frame: sampleFrame(), title: 'Orders' }, { frame: sampleFrame(), title: '' }, {}]);
+  const found = frames.findTables(page);
+  // Two panels carry a frame. The third one carries none, and each panel holds a hidden second grid.
+  assert.equal(found.length, 2);
+  found.forEach((table) => assert.notEqual(frames.findDataFrame(table), null));
+});
+
+test('findTables skips the table of the panel inspector, which sits outside every section', () => {
+  const drawer = new FakeElement({
+    attributes: { 'data-testid': 'data-testid Panel inspector Data content' },
     children: [new FakeElement({ attributes: { role: 'grid' }, frame: sampleFrame() })],
   });
-  assert.equal(frames.findTables(dashboard).length, 0);
+  const page = new FakeElement({ attributes: { 'data-testid': 'data-testid dashboard' }, children: [drawer] });
+  assert.equal(frames.findTables(page).length, 0);
+});
+
+test('showsButtonAtRest is true in Explore and false in a dashboard', () => {
+  assert.equal(frames.showsButtonAtRest(frames.findTables(explorePage([sampleFrame()]))[0]), true);
+  assert.equal(frames.showsButtonAtRest(frames.findTables(dashboardPage([{ frame: sampleFrame() }]))[0]), false);
+});
+
+test('menuButtonOf finds the menu button of Grafana, with a title and without one', () => {
+  for (const title of ['Orders', '']) {
+    const page = dashboardPage([{ frame: sampleFrame(), title }]);
+    const titleBar = frames.sectionOf(frames.findTables(page)[0]).children[0];
+    assert.equal(frames.menuButtonOf(titleBar), titleBar.children[0]);
+  }
+});
+
+test('menuButtonOf gives null where Grafana draws no menu button, such as Explore', () => {
+  const page = explorePage([sampleFrame()]);
+  assert.equal(frames.menuButtonOf(frames.sectionOf(frames.findTables(page)[0])), null);
+});
+
+test('rightOffset leaves room for the menu button of Grafana', () => {
+  assert.equal(frames.rightOffset(null), 8);
+  // The menu button of a panel with no title measures 0 while Grafana hides it. Reserve its size.
+  assert.equal(frames.rightOffset(0), 34);
+  assert.equal(frames.rightOffset(24), 38);
 });
 
 test('findTables finds nothing on a page with no result', () => {

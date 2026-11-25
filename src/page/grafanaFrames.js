@@ -31,8 +31,17 @@ const GrafanaTableExportFrames = (() => {
   // Grafana 12.4 and later: Explore renders the table panel, which draws a react-data-grid.
   const GRID_SELECTOR = '[role="grid"]';
   const TABLE_SELECTOR = `${LABELLED_TABLE_SELECTOR}, ${GRID_SELECTOR}`;
-  // The table panel also runs in a dashboard. Only Explore gets an Export button.
+  // Explore and a dashboard draw the same table panel. Explore shows the Export button at all times,
+  // a dashboard only while the mouse is over the panel.
   const EXPLORE_SELECTOR = '[data-testid="data-testid Explore"]';
+  // The menu button that Grafana draws in the title bar of a dashboard panel. Never match it by its
+  // `aria-label`: Grafana translates that label. A panel with no title gets the second test id.
+  const MENU_BUTTON_SELECTOR = '[data-testid^="data-testid Panel menu"], [data-testid="panel-menu-button"]';
+  // The Export button sits this far from the right edge of the section, and this far from the menu button.
+  const EDGE_GAP = 8;
+  const BUTTON_GAP = 6;
+  // Grafana hides the menu button of a panel with no title, so it measures 0. Reserve its real size.
+  const MENU_BUTTON_WIDTH = 20;
   // The section of the table. Grafana 12.3 and earlier named it `section-wrapper-Table`. Grafana 12.4
   // and later name it `data-testid Panel header <title>`.
   const SECTION_SELECTOR = '[data-testid^="section-wrapper-Table"], [data-testid^="data-testid Panel header"]';
@@ -155,15 +164,17 @@ const GrafanaTableExportFrames = (() => {
 
   /**
    * @param {Element} element An element that `TABLE_SELECTOR` matched.
-   * @returns {boolean} `true` when the element is a result table of Explore.
+   * @returns {boolean} `true` when the element is a result table that gets an Export button.
    */
   function isResultTable(element) {
     // The label named the result table of Explore by itself. Keep such a table even when it carries no
     // frame, so a change to the data shape shows the error of the export, not a button that never comes.
     if (element.matches(LABELLED_TABLE_SELECTOR)) return true;
-    // A dashboard draws the same grid, and react-data-grid draws a second, hidden grid to measure the
-    // scrollbar. The hidden grid carries no React fiber, so the walk up finds no frame.
-    return element.closest(EXPLORE_SELECTOR) !== null && findDataFrame(element) !== null;
+    // The table of a panel, in Explore or in a dashboard. The panel inspector draws its own grid in a
+    // drawer outside every section, so it gets no button. react-data-grid draws a second, hidden grid
+    // to measure the scrollbar: it carries no React fiber, so the walk up finds no frame.
+    const inPanel = sectionOf(element) !== null || element.closest(EXPLORE_SELECTOR) !== null;
+    return inPanel && findDataFrame(element) !== null;
   }
 
   /**
@@ -219,5 +230,44 @@ const GrafanaTableExportFrames = (() => {
     return tables.filter((table) => table !== tableElement && (section === null || !section.contains(table)));
   }
 
-  return { findTables, sectionOf, tablesOfOtherSections, titleBarOf, findDataFrame, frameToTable, executedQuery, fileName };
+  /**
+   * Explore gives the table one job, so its button stays visible. A dashboard panel holds a chart as
+   * often as a table, and Grafana hides its own controls there until the mouse is over the panel.
+   * @param {Element} tableElement
+   * @returns {boolean} `true` when the button shows with no mouse over the panel and no focus in it.
+   */
+  function showsButtonAtRest(tableElement) {
+    return tableElement.closest(EXPLORE_SELECTOR) !== null;
+  }
+
+  /**
+   * @param {Element} element The title bar of the section, or the section.
+   * @returns {Element | null} The menu button that Grafana draws in the title bar.
+   */
+  function menuButtonOf(element) {
+    return element.querySelectorAll(MENU_BUTTON_SELECTOR)[0] ?? null;
+  }
+
+  /**
+   * @param {number | null} menuButtonWidth The width of the menu button, or `null` with no menu button.
+   * @returns {number} The space in pixels between the Export button and the right edge of the section.
+   */
+  function rightOffset(menuButtonWidth) {
+    if (menuButtonWidth === null) return EDGE_GAP;
+    return EDGE_GAP + Math.max(menuButtonWidth, MENU_BUTTON_WIDTH) + BUTTON_GAP;
+  }
+
+  return {
+    findTables,
+    sectionOf,
+    tablesOfOtherSections,
+    titleBarOf,
+    showsButtonAtRest,
+    menuButtonOf,
+    rightOffset,
+    findDataFrame,
+    frameToTable,
+    executedQuery,
+    fileName,
+  };
 })();
