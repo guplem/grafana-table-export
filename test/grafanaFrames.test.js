@@ -205,6 +205,12 @@ test('showsButtonAtRest is true in Explore and false in a dashboard', () => {
   assert.equal(frames.showsButtonAtRest(frames.findTables(dashboardPage([{ frame: sampleFrame() }]))[0]), false);
 });
 
+test('showsButtonAtRest is true for the labelled table of Grafana 12.3, which needs no Explore above it', () => {
+  const table = new FakeElement({ attributes: { 'aria-label': 'Explore Table' }, frame: sampleFrame() });
+  new FakeElement({ attributes: { 'data-testid': 'data-testid dashboard' }, children: [table] });
+  assert.equal(frames.showsButtonAtRest(table), true);
+});
+
 test('menuButtonOf finds the menu button of Grafana, with a title and without one', () => {
   for (const title of ['Orders', '']) {
     const page = dashboardPage([{ frame: sampleFrame(), title }]);

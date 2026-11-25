@@ -232,12 +232,14 @@ const GrafanaTableExportFrames = (() => {
   }
 
   /**
-   * Explore gives the table one job, so its button stays visible. A dashboard panel holds a chart as
-   * often as a table, and Grafana hides its own controls there until the mouse is over the panel.
+   * Explore shows one table and nothing else, so its button stays visible. A dashboard panel holds a
+   * chart as often as a table, and Grafana hides its own controls there until the mouse arrives.
    * @param {Element} tableElement
    * @returns {boolean} `true` when the button shows with no mouse over the panel and no focus in it.
    */
   function showsButtonAtRest(tableElement) {
+    // Only Explore labels a table, so the label alone names the table of Explore.
+    if (tableElement.matches(LABELLED_TABLE_SELECTOR)) return true;
     return tableElement.closest(EXPLORE_SELECTOR) !== null;
   }
 
