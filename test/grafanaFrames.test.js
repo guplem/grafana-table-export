@@ -188,7 +188,7 @@ test('findTables finds the table panel of a dashboard, one for each panel', () =
   const found = frames.findTables(page);
   // Two panels carry a frame. The third one carries none, and each panel holds a hidden second grid.
   assert.equal(found.length, 2);
-  found.forEach((table) => assert.notEqual(frames.findDataFrame(table), null));
+  found.forEach((/** @type {object} */ table) => assert.notEqual(frames.findDataFrame(table), null));
 });
 
 test('findTables skips the table of the panel inspector, which sits outside every section', () => {
@@ -219,10 +219,14 @@ test('menuButtonOf gives null where Grafana draws no menu button, such as Explor
 });
 
 test('rightOffset leaves room for the menu button of Grafana', () => {
-  assert.equal(frames.rightOffset(null), 8);
-  // The menu button of a panel with no title measures 0 while Grafana hides it. Reserve its size.
-  assert.equal(frames.rightOffset(0), 34);
-  assert.equal(frames.rightOffset(24), 38);
+  // Explore draws no menu button, so the Export button keeps the edge of the panel.
+  assert.equal(frames.rightOffset(287, null), 8);
+  // A dashboard panel: the menu button ends 9 pixels from the right edge, and is 20 wide.
+  assert.equal(frames.rightOffset(287, { left: 258, width: 20 }), 35);
+  // Grafana hides the menu button of a panel with no title, and a hidden box can measure zero.
+  assert.equal(frames.rightOffset(287, { left: 0, width: 0 }), 34);
+  // A menu button at the right edge of the host, or past it, still leaves the smallest gap.
+  assert.equal(frames.rightOffset(287, { left: 290, width: 20 }), 8);
 });
 
 test('findTables finds nothing on a page with no result', () => {

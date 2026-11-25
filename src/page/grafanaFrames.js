@@ -249,12 +249,17 @@ const GrafanaTableExportFrames = (() => {
   }
 
   /**
-   * @param {number | null} menuButtonWidth The width of the menu button, or `null` with no menu button.
-   * @returns {number} The space in pixels between the Export button and the right edge of the section.
+   * The Export button must never cover the menu button of Grafana, whatever the padding of the host,
+   * the zoom of the browser or the theme. So measure the two boxes, never trust a fixed size.
+   * @param {number} hostRight The right edge of the host of the button, from `getBoundingClientRect`.
+   * @param {{ left: number, width: number } | null} menuButton Its box, or `null` with no menu button.
+   * @returns {number} The space in pixels between the Export button and the right edge of the host.
    */
-  function rightOffset(menuButtonWidth) {
-    if (menuButtonWidth === null) return EDGE_GAP;
-    return EDGE_GAP + Math.max(menuButtonWidth, MENU_BUTTON_WIDTH) + BUTTON_GAP;
+  function rightOffset(hostRight, menuButton) {
+    if (menuButton === null) return EDGE_GAP;
+    // Grafana hides the menu button of a panel with no title, and a hidden box can measure zero.
+    if (menuButton.width === 0) return EDGE_GAP + MENU_BUTTON_WIDTH + BUTTON_GAP;
+    return Math.max(EDGE_GAP, Math.round(hostRight - menuButton.left) + BUTTON_GAP);
   }
 
   return {

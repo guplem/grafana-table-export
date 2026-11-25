@@ -3,6 +3,11 @@
 
 const GrafanaTableExportMenu = (() => {
   const BUTTON_MARK = 'data-grafana-table-export';
+  /** On the section of a panel that shows its button only while the mouse or the focus is on it. */
+  const PANEL_MARK = 'data-grafana-table-export-panel';
+  /** On the button container while its menu is open, so the button stays visible under the menu. */
+  const MENU_OPEN_MARK = 'data-grafana-table-export-open';
+  const STYLE_ID = 'grafana-table-export-style';
   /** How many levels above the table the title bar and the button can be. */
   const MAX_SECTION_DEPTH = 12;
   /** The mark of the button before version 0.1.0. */
@@ -229,16 +234,19 @@ const GrafanaTableExportMenu = (() => {
    * @returns {{ host: Element | null, header: Element | null }}
    */
   function findTitleBar(tableElement, others) {
+    const section = GrafanaTableExportFrames.sectionOf(tableElement);
     let child = tableElement;
     for (let depth = 0; depth < MAX_SECTION_DEPTH && child.parentElement; depth++) {
       const parent = child.parentElement;
       if (holdsOtherTable(parent, others)) break;
       const header = GrafanaTableExportFrames.titleBarOf(parent, child);
       if (header !== null) return { host: parent, header };
+      // A dashboard holds many panels. A walk above the section would put the button in the corner of
+      // the whole dashboard, far from its table.
+      if (parent === section) break;
       child = parent;
     }
     // `buttonsAround` must find the button on the next scan, so the fallback host holds no other table.
-    const section = GrafanaTableExportFrames.sectionOf(tableElement);
     const host = section !== null && !holdsOtherTable(section, others) ? section : tableElement.parentElement;
     return { host, header: null };
   }
@@ -250,12 +258,18 @@ const GrafanaTableExportMenu = (() => {
    * @param {Element | null} header
    */
   function placeContainer(container, host, header) {
+    const hostBox = host.getBoundingClientRect();
+    const menuButton = GrafanaTableExportFrames.menuButtonOf(GrafanaTableExportFrames.sectionOf(host) ?? host);
+    const right = GrafanaTableExportFrames.rightOffset(hostBox.right, menuButton?.getBoundingClientRect() ?? null);
+    container.style.right = `${right}px`;
+    // A narrow panel with a long title must not push the button past the left edge of the panel.
+    container.style.maxWidth = `calc(100% - ${right + 8}px)`;
     if (header === null || !header.isConnected) {
       container.style.top = '6px';
       return;
     }
     const headerBox = header.getBoundingClientRect();
-    const top = headerBox.top - host.getBoundingClientRect().top;
+    const top = headerBox.top - hostBox.top;
     container.style.top = `${Math.max(0, Math.round(top + headerBox.height / 2 - container.offsetHeight / 2))}px`;
   }
 
@@ -298,6 +312,7 @@ const GrafanaTableExportMenu = (() => {
    * @returns {HTMLElement[]}
    */
   function buttonsAround(tableElement, others) {
+    const section = GrafanaTableExportFrames.sectionOf(tableElement);
     /** @type {HTMLElement[]} */
     const found = [];
     let level = tableElement.parentElement;
@@ -308,6 +323,8 @@ const GrafanaTableExportMenu = (() => {
           found.push(child);
         }
       }
+      // `findTitleBar` never puts the button above the section, so a button above it belongs elsewhere.
+      if (level === section) break;
     }
     return found;
   }
@@ -315,6 +332,34 @@ const GrafanaTableExportMenu = (() => {
   /** @param {HTMLElement} host */
   function prepareHost(host) {
     if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+  }
+
+  /**
+   * Hides the button of a dashboard panel until the mouse or the keyboard focus reaches the panel.
+   * The browser keeps `:hover` and `:focus-within` right on its own, so a Grafana that renders the
+   * panel again needs no event and loses no state. A missing style sheet shows the button at all
+   * times, which is the harmless direction of the failure.
+   */
+  function addHoverStyle() {
+    if (document.getElementById(STYLE_ID) !== null) return;
+    const style = document.createElement('style');
+    style.id = STYLE_ID;
+    style.textContent =
+      `[${PANEL_MARK}]:not(:hover):not(:focus-within) [${BUTTON_MARK}]:not([${MENU_OPEN_MARK}])` +
+      // `visibility` takes no click and no Tab key, and it keeps the box that `placeContainer` measures.
+      '{visibility:hidden}';
+    (document.head ?? document.documentElement).appendChild(style);
+  }
+
+  /**
+   * @param {Element} tableElement
+   * @param {Element} host The element that holds the button.
+   */
+  function markPanel(tableElement, host) {
+    if (GrafanaTableExportFrames.showsButtonAtRest(tableElement)) return;
+    addHoverStyle();
+    // The mark goes on the section, so the whole panel is the hover area, not only the title bar.
+    (GrafanaTableExportFrames.sectionOf(tableElement) ?? host).setAttribute(PANEL_MARK, '');
   }
 
   /**
@@ -327,6 +372,8 @@ const GrafanaTableExportMenu = (() => {
     const others = GrafanaTableExportFrames.tablesOfOtherSections(tableElement, tables);
     const { host, header } = findTitleBar(tableElement, others);
     if (!(host instanceof HTMLElement)) return;
+    // Grafana renders the panel again on each refresh, which drops the mark. Set it on each scan.
+    markPanel(tableElement, host);
     const [kept, ...extra] = buttonsAround(tableElement, others).filter((button) => {
       // A tab that was open during an extension update can keep a button of an older version.
       if (button.hasAttribute(BUTTON_MARK)) return true;
@@ -357,6 +404,12 @@ const GrafanaTableExportMenu = (() => {
     /** @param {Event} event */
     const onOutside = (event) => {
       const target = /** @type {Node} */ (event.target);
+      // Grafana can render the panel again and drop the container while the menu is open. The menu
+      // would then stay on a page that no longer holds its button.
+      if (!container.isConnected) {
+        close();
+        return;
+      }
       if (!container.contains(target) && !menu?.contains(target)) close();
     };
     /** @param {KeyboardEvent} event */
@@ -372,6 +425,7 @@ const GrafanaTableExportMenu = (() => {
       if (menu === null) return;
       menu.remove();
       menu = null;
+      container.removeAttribute(MENU_OPEN_MARK);
       document.removeEventListener('mousedown', onOutside, true);
       document.removeEventListener('keydown', onKey, true);
       document.removeEventListener('scroll', onScroll, true);
@@ -387,6 +441,8 @@ const GrafanaTableExportMenu = (() => {
       // another host. So look the table up at click time, from where the button is now.
       const currentHost = container.parentElement;
       const currentTable = (currentHost === null ? [] : GrafanaTableExportFrames.findTables(currentHost))[0] ?? tableElement;
+      // The mouse leaves the panel on its way to the menu, which sits on `document.body`.
+      container.setAttribute(MENU_OPEN_MARK, '');
       menu = buildMenu(currentTable, close);
       menu.style.visibility = 'hidden';
       document.body.appendChild(menu);
