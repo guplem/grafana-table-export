@@ -77,17 +77,31 @@ Each one below states something that stops being true:
 - `README.md` first line, the steps, the troubleshooting note
 - `test/grafanaFrames.test.js`, the test that asserts a dashboard gets no button
 
-## Gaps
+## Gaps, answered
 
-1. **Does the panel inspector of Explore sit outside the Explore container?** The issue says Grafana
-   renders the drawer into `.main-view`. Confirm it, or the inspector table gets a button.
-2. **Is the dashboard menu button inside the title bar element that `titleBarOf` returns?** If it sits
-   in another element, `menuButtonOf` must look in the section, not in the host.
-3. **Does a Grafana dashboard panel section always match `[data-testid^="data-testid Panel header"]`,
-   also with no title?** With no title the test id can hold an empty name.
-4. **Does `section.matches(':hover')` hold while the pointer is over the fixed menu on `document.body`?**
-   The menu sits outside the section, so the hover can end when the mouse moves to the menu. The
-   "menu is open" state must cover it.
+Measured on `play.grafana.org`, Grafana 13.4, dashboard `/d/OhR1ID6Mk/table` and Explore.
+
+1. **The panel inspector sits outside every section.** Its grid is in
+   `[data-testid="data-testid Panel inspector Data content"]`, with a data frame and no panel section
+   above it. The section test keeps it out, in a dashboard and in Explore.
+2. **The menu button sits inside the title bar.** `[data-testid^="data-testid Panel menu"]`, 20 by 24
+   pixels, inside `[data-testid="data-testid header-container"]`, 8 pixels from the right edge of the
+   section. `getComputedStyle` reports `visibility: hidden` and `opacity: 0` at rest.
+3. **A panel with no title keeps the section, with an empty name:** `data-testid Panel header `. Its
+   header is `[data-testid="data-testid hover-header-container"]`, which `TITLE_BAR_SELECTOR` already
+   matches, because that selector ends with `header-container`.
+4. **Explore has no menu button.** `menuButtonOf` returns `null` there, so `rightOffset` gives 8 and
+   the button keeps its place of today.
+5. **The hover ends when the pointer reaches the menu**, because the menu sits on `document.body`.
+   The "menu is open" state covers it.
+6. **The Explore table of Grafana 12.4 and later sits in a panel section too**
+   (`data-testid Panel header Table`), inside the Explore container.
+
+## Open points that the implementation must answer
+
+- **The listeners follow the button.** `attachExportButton` can move a kept button to another host.
+  The listeners must follow the section of the table, and must not pile up on each scan.
+- **The scan must stay fast.** The issue asks for one scan under 10 ms with ten table panels.
 
 ## Steps
 

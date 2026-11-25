@@ -14,7 +14,7 @@
  */
 
 /**
- * The result of one query, as the Explore table holds it.
+ * The result of one query, as the table of Explore or of a dashboard panel holds it.
  * @typedef {object} GrafanaDataFrame
  * @property {GrafanaField[]} fields
  * @property {string} [refId]
@@ -28,7 +28,7 @@ const GrafanaTableExportFrames = (() => {
 
   // Grafana 12.3 and earlier: Explore rendered its own table, with this label on it.
   const LABELLED_TABLE_SELECTOR = '[aria-label="Explore Table"]';
-  // Grafana 12.4 and later: Explore renders the table panel, which draws a react-data-grid.
+  // Grafana 12.4 and later: Explore and a dashboard render the table panel, with a react-data-grid.
   const GRID_SELECTOR = '[role="grid"]';
   const TABLE_SELECTOR = `${LABELLED_TABLE_SELECTOR}, ${GRID_SELECTOR}`;
   // Explore and a dashboard draw the same table panel. Explore shows the Export button at all times,
@@ -49,6 +49,7 @@ const GrafanaTableExportFrames = (() => {
   // `data-testid header-container`.
   const TITLE_BAR_SELECTOR = '[data-testid$="header-container"]';
   // The title that Explore gives the panel: "Table", or "Table - <name>" with more than one frame.
+  // A dashboard panel carries free text, which the test id of the title bar finds instead.
   const TITLE_PATTERN = /^Table\b/;
 
   /**

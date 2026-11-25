@@ -1,8 +1,8 @@
 # Table Export for Grafana privacy policy
 
-Last updated: 17 November 2026.
+Last updated: 25 November 2026.
 
-Table Export for Grafana is a Chrome extension that exports the result tables of Grafana Explore as Markdown, CSV, TSV, JSON or plain text.
+Table Export for Grafana is a Chrome extension that exports the result tables of Grafana, in Explore and in a dashboard, as Markdown, CSV, TSV, JSON or plain text.
 
 ## What the extension handles
 

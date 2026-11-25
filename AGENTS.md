@@ -1,6 +1,6 @@
 # Table Export for Grafana
 
-A Manifest V3 Chrome extension. It adds an Export button to each result table in Grafana Explore. The button exports the full result as Markdown, CSV, TSV, JSON or a plain-text table, to the clipboard or to a file.
+A Manifest V3 Chrome extension. It adds an Export button to each result table of Grafana, in Explore and on the table panels of a dashboard. The button exports the full result as Markdown, CSV, TSV, JSON or a plain-text table, to the clipboard or to a file.
 Plain JavaScript with JSDoc types, no build step: the repository folder is the folder that Chrome loads. The code is the source of truth for every fact. `README.md` is for people.
 
 ## Docs
@@ -66,9 +66,11 @@ How a site gets the page scripts:
 ## Traps
 
 - **A page script runs twice when the service worker injects it into a tab that already has it.** Each file declares a global constant, so the second copy throws. The service worker checks for `GrafanaTableExportFormats` before it injects.
-- **The Explore table section clips its children** (`overflow: hidden`). The menu lives on `document.body` with a fixed position, and closes on a scroll or a resize.
+- **The section of a table clips its children** (`overflow: hidden`). The menu lives on `document.body` with a fixed position, and closes on a scroll or a resize.
 - **The section of the table has no fixed test id.** Grafana 12.3 and earlier use `section-wrapper-Table`. Grafana 12.4 and later use `data-testid Panel header`. `titleBarOf` finds the title by its text first, then by the `header-container` test id.
-- **Grafana 12.4 draws the Explore table with react-data-grid, and a hidden second `role="grid"` beside it.** The hidden grid measures the scrollbar. It carries no React fiber, so `findTables` finds no frame and drops it.
+- **Grafana 12.4 draws the table with react-data-grid, and a hidden second `role="grid"` beside it.** The hidden grid measures the scrollbar. It carries no React fiber, so `findTables` finds no frame and drops it. Explore and a dashboard draw the same table.
+- **A dashboard panel with no title keeps its section,** with an empty name (`data-testid Panel header `), and draws `data-testid hover-header-container` in place of the title bar. `TITLE_BAR_SELECTOR` ends with `header-container`, so it matches both.
+- **The Export button of a dashboard panel hides with one style rule, never with a listener.** A mouse that does not move sends no event, so a panel that Grafana renders again would hide the button under the pointer. `focusout` also runs before the focus lands, so a listener would hide the button that the Tab key is about to reach.
 - **Two result tables in one section share one Export button.** `tablesOfOtherSections` ignores the other tables of the same section, so the walk up does not stop at them. A walk that stops at once finds no button, and each scan then adds one more.
 - **A scan can run before Grafana renders the "Table" title.** That scan puts the button in a fallback host. `buttonsAround` looks at every level of the section, so a later scan moves the button and adds no second one.
 - **A split view has two tables under one parent.** Each walk up from a table stops below a level that holds another table, so one pane never takes or deletes the button of the other.

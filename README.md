@@ -1,6 +1,6 @@
 # Table Export for Grafana
 
-A Chrome extension for Grafana Explore. It adds an **Export** button above each result table. The button exports the full result, not only the rows on screen, as Markdown, CSV, TSV, JSON or a plain-text table. Copy it, or download a file. Nothing leaves your browser.
+A Chrome extension for Grafana. It adds an **Export** button above each result table, in Explore and in a dashboard. The button exports the full result, not only the rows on screen, as Markdown, CSV, TSV, JSON or a plain-text table. Copy it, or download a file. Nothing leaves your browser.
 
 ![the icon: a table with an orange header row and a download arrow](icons/icon128.png)
 
@@ -30,8 +30,8 @@ The Export button shows at once, with no reload. To turn it off, open the popup 
 
 ## How to use it
 
-1. Run a query in Grafana Explore.
-2. Press **⤓ Export ▾** at the top right of the table section.
+1. Open a dashboard with a table panel, or run a query in Grafana Explore.
+2. Press **⤓ Export ▾** at the top right of the table. In a dashboard it shows while the mouse is over the panel.
 3. Pick a format, then press **Copy** or **Download**.
 
 | Format           | Use                                                                                    |
@@ -52,7 +52,7 @@ The menu has two options. The extension remembers them for each Grafana site.
 **The Export button does not show.**
 Open the popup on that tab. If it says "Off", turn it on. If it says "On", run the query again, or reload the tab.
 
-Grafana 12.4 changed the result table of Explore. The extension works with that new table, and with the table of Grafana 12.3 and earlier. The last check ran on Grafana 13.4. A newer Grafana can change the table again: open an issue with your Grafana version.
+Grafana 12.4 changed the result table of Explore, and brought the same table to a dashboard. The extension works with that new table, and with the table of Grafana 12.3 and earlier. A dashboard needs Grafana 12.4 or later. The last check ran on Grafana 13.4. A newer Grafana can change the table again: open an issue with your Grafana version.
 
 **The export says "could not read the table data".**
 A Grafana update can change how Grafana keeps the result. Open an issue with your Grafana version (in **Help**, the `?` icon).
