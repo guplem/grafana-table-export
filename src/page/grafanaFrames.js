@@ -37,8 +37,10 @@ const GrafanaTableExportFrames = (() => {
   // The menu button that Grafana draws in the title bar of a dashboard panel. Never match it by its
   // `aria-label`: Grafana translates that label. A panel with no title gets the second test id.
   const MENU_BUTTON_SELECTOR = '[data-testid^="data-testid Panel menu"], [data-testid="panel-menu-button"]';
-  // The Export button sits this far from the right edge of the section, and this far from the menu button.
+  // The Export button sits this far from the right edge of the section, and this far from the menu
+  // button. With no title bar to sit on, it sits this far from the top edge.
   const EDGE_GAP = 8;
+  const TOP_GAP = 6;
   const BUTTON_GAP = 6;
   // Grafana hides the menu button of a panel with no title, so it measures 0. Reserve its real size.
   const MENU_BUTTON_WIDTH = 20;
@@ -244,6 +246,19 @@ const GrafanaTableExportFrames = (() => {
   }
 
   /**
+   * The Export button sits on the line of the title bar. Grafana draws no box for the hover header
+   * of a panel with no title, so such a header measures zero and the button takes the top edge.
+   * @param {number} hostTop The top edge of the host of the button, from `getBoundingClientRect`.
+   * @param {{ top: number, height: number } | null} headerBox The box of the title bar, or `null`.
+   * @param {number} buttonHeight
+   * @returns {number} The space in pixels between the Export button and the top edge of the host.
+   */
+  function topOffset(hostTop, headerBox, buttonHeight) {
+    if (headerBox === null || headerBox.height === 0) return TOP_GAP;
+    return Math.max(0, Math.round(headerBox.top - hostTop + headerBox.height / 2 - buttonHeight / 2));
+  }
+
+  /**
    * @param {Element} element The title bar of the section, or the section.
    * @returns {Element | null} The menu button that Grafana draws in the title bar.
    */
@@ -273,6 +288,7 @@ const GrafanaTableExportFrames = (() => {
     showsButtonAtRest,
     menuButtonOf,
     rightOffset,
+    topOffset,
     findDataFrame,
     frameToTable,
     executedQuery,

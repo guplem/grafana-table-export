@@ -224,6 +224,18 @@ test('menuButtonOf gives null where Grafana draws no menu button, such as Explor
   assert.equal(frames.menuButtonOf(frames.sectionOf(frames.findTables(page)[0])), null);
 });
 
+test('topOffset puts the button on the line of the title bar', () => {
+  // A title bar 40 pixels tall at the top of the host, and a button 24 pixels tall.
+  assert.equal(frames.topOffset(100, { top: 100, height: 40 }, 24), 8);
+  // A title bar below the top of the host.
+  assert.equal(frames.topOffset(100, { top: 140, height: 40 }, 24), 48);
+  // Grafana draws no box for the hover header of a panel with no title, and the host can have none.
+  assert.equal(frames.topOffset(100, { top: 0, height: 0 }, 24), 6);
+  assert.equal(frames.topOffset(100, null, 24), 6);
+  // A title bar above the host, or shorter than the button, never pushes the button out of the host.
+  assert.equal(frames.topOffset(100, { top: 90, height: 16 }, 24), 0);
+});
+
 test('rightOffset leaves room for the menu button of Grafana', () => {
   // Explore draws no menu button, so the Export button keeps the edge of the panel.
   assert.equal(frames.rightOffset(287, null), 8);

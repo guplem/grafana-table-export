@@ -273,12 +273,7 @@ const GrafanaTableExportMenu = (() => {
     // Every read comes first. A write between two reads makes the browser lay out the page again,
     // and the scan runs this for each table of a dashboard.
     container.style.right = `${GrafanaTableExportFrames.rightOffset(hostBox.right, menuButton?.getBoundingClientRect() ?? null)}px`;
-    if (headerBox === null || headerBox.height === 0) {
-      container.style.top = '6px';
-      return;
-    }
-    const top = headerBox.top - hostBox.top;
-    container.style.top = `${Math.max(0, Math.round(top + headerBox.height / 2 - buttonHeight / 2))}px`;
+    container.style.top = `${GrafanaTableExportFrames.topOffset(hostBox.top, headerBox, buttonHeight)}px`;
   }
 
   /**
@@ -495,8 +490,8 @@ const GrafanaTableExportMenu = (() => {
       placeMenu(menu, button);
       menu.style.visibility = '';
       // The menu sits at the end of `document.body`, far from the button in the tab order. Give it
-      // the focus, so the Tab key walks the formats and not the rest of the page.
-      menu.querySelector('button')?.focus();
+      // the focus, so the Tab key walks the options and the formats, not the rest of the page.
+      /** @type {HTMLElement | null} */ (menu.querySelector('input, button'))?.focus();
       document.addEventListener('mousedown', onOutside, true);
       document.addEventListener('keydown', onKey, true);
       document.addEventListener('scroll', onScroll, true);
