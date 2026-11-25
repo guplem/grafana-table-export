@@ -61,10 +61,10 @@ async function render() {
       show('Open a Grafana page first.', 'Then click this icon again to turn the extension on for that site.', false);
       return;
     case 'built-in':
-      show('✓ Works on this site.', 'Run a query in Explore, then press Export above the result table.', true);
+      show('✓ Works on this site.', 'Open a dashboard or run a query in Explore, then press Export above the table.', true);
       return;
     case 'enabled':
-      show(`✓ On for ${host}`, 'Run a query in Explore, then press Export above the result table.', true);
+      show(`✓ On for ${host}`, 'Open a dashboard or run a query in Explore, then press Export above the table.', true);
       offer('Turn off for this site', true, async () => {
         await chrome.permissions.remove({ origins: [/** @type {string} */ (pattern)] });
         await render();
@@ -84,7 +84,7 @@ async function render() {
       offer(grafana === false ? `Turn on for ${host} anyway` : `Turn on for ${host}`, grafana === false, async () => {
         const granted = await chrome.permissions.request({ origins: [/** @type {string} */ (pattern)] });
         if (granted) {
-          show(`✓ On for ${host}`, 'The Export button shows above each result table in Explore.', true);
+          show(`✓ On for ${host}`, 'The Export button shows above each result table of Grafana.', true);
         }
       });
     }

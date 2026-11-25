@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Chrome extension that exports the full result table of Grafana Explore as Markdown, CSV, TSV, JSON or plain text.",
+  "description": "Chrome extension that exports a full Grafana table, in Explore or in a dashboard, as Markdown, CSV, TSV, JSON or plain text.",
   "license": "MIT",
   "scripts": {
     "prepare": "lefthook install && node scripts/syncSkills.js",
