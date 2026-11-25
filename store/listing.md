@@ -41,12 +41,12 @@ Export a full Grafana table, in Explore or a dashboard, as Markdown, CSV, TSV, J
 
 Export a whole Grafana table in one click, in Explore and in a dashboard.
 
-Grafana shows a result as a table, but it renders only the rows on screen. To share a table in a pull request, a doc or a chat, you end up with screenshots or with hand-copied rows. Table Export for Grafana adds an Export button above the table, in Explore and on each table panel of a dashboard. It reads the full result, every row, and gives it to you in the format that you need.
+Grafana shows a result as a table, but it renders only the rows on screen. To share a table in a pull request, a doc or a chat, you end up with screenshots or with hand-copied rows. Table Export for Grafana adds an Export button above the table, in Explore and on the table panels of a dashboard (Grafana 12.2 or later). It reads the full result, every row, and gives it to you in the format that you need.
 
 HOW IT WORKS
 
 1. Open a dashboard with a table panel, or run a query in Grafana Explore.
-2. Press Export at the top right of the table. In a dashboard it shows while the mouse is over the panel.
+2. Press Export at the top right of the table. In a dashboard it shows while the mouse is over the panel, or while the keyboard focus is in it.
 3. Pick a format, then Copy or Download.
 
 FORMATS
@@ -59,7 +59,7 @@ FORMATS
 FEATURES
 • The full result, not only the visible rows.
 • Formatted values, as the table shows them with units and dates, or the raw values.
-• Works in Explore and on the table panels of a dashboard, with every data source.
+• Works in Explore, and on the Grafana table panels of a dashboard (Grafana 12.2 or later), with every data source.
 • Works with Grafana's fast page changes, new queries, the split view and a dashboard refresh.
 
 TURN IT ON FOR YOUR GRAFANA
