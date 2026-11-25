@@ -1,6 +1,6 @@
 # Table Export for Grafana
 
-A Manifest V3 Chrome extension. It adds an Export button to each result table in Grafana Explore. The button exports the full result as Markdown, CSV, TSV, JSON or a plain-text table, to the clipboard or to a file.
+A Manifest V3 Chrome extension. It adds an Export button to each result table of Grafana, in Explore and on the table panels of a dashboard. The button exports the full result as Markdown, CSV, TSV, JSON or a plain-text table, to the clipboard or to a file.
 Plain JavaScript with JSDoc types, no build step: the repository folder is the folder that Chrome loads. The code is the source of truth for every fact. `README.md` is for people.
 
 ## Docs
@@ -32,7 +32,7 @@ A change to one of these goals needs the owner.
 - **Match Grafana's data by shape, never by a component name.** Grafana minifies its React component names, and they change in each build. `grafanaFrames.js` is the only file that knows Grafana's data shapes.
 - **Keep the page script list in one place.** `PAGE_SCRIPT_FILES` in `src/shared/siteAccess.js` and the `content_scripts` entry of `manifest.json` list the same files in the same order. A test compares them.
 - **Comment the why, never the what.**
-- **Use one word per concept:** site (one host that the person turns on), page script (a file in `src/page/`), data frame (Grafana's result object), format (one export type).
+- **Use one word per concept:** site (one host that the person turns on), page script (a file in `src/page/`), data frame (Grafana's result object), format (one export type), section (the element of Grafana that holds one table and its title bar), panel (what the person sees: one section of a dashboard).
 
 ## Checks
 
@@ -66,9 +66,11 @@ How a site gets the page scripts:
 ## Traps
 
 - **A page script runs twice when the service worker injects it into a tab that already has it.** Each file declares a global constant, so the second copy throws. The service worker checks for `GrafanaTableExportFormats` before it injects.
-- **The Explore table section clips its children** (`overflow: hidden`). The menu lives on `document.body` with a fixed position, and closes on a scroll or a resize.
+- **The section of a table clips its children** (`overflow: hidden`). The menu lives on `document.body` with a fixed position, and closes on a scroll or a resize.
 - **The section of the table has no fixed test id.** Grafana 12.3 and earlier use `section-wrapper-Table`. Grafana 12.4 and later use `data-testid Panel header`. `titleBarOf` finds the title by its text first, then by the `header-container` test id.
-- **Grafana 12.4 draws the Explore table with react-data-grid, and a hidden second `role="grid"` beside it.** The hidden grid measures the scrollbar. It carries no React fiber, so `findTables` finds no frame and drops it.
+- **Grafana 12.4 draws the table with react-data-grid, and a hidden second `role="grid"` beside it.** The hidden grid measures the scrollbar. It carries no React fiber, so `findTables` finds no frame and drops it.
+- **A dashboard panel with no title keeps its section,** with an empty name (`data-testid Panel header `). It draws `data-testid hover-header-container` instead of the title bar.
+- **Never hide the Export button of a dashboard panel with a listener.** A mouse that does not move sends no event, so the button stays hidden under the pointer after Grafana renders the panel again. `focusout` also runs before the focus lands, so a listener hides the button that the Tab key is about to reach.
 - **Two result tables in one section share one Export button.** `tablesOfOtherSections` ignores the other tables of the same section, so the walk up does not stop at them. A walk that stops at once finds no button, and each scan then adds one more.
 - **A scan can run before Grafana renders the "Table" title.** That scan puts the button in a fallback host. `buttonsAround` looks at every level of the section, so a later scan moves the button and adds no second one.
 - **A split view has two tables under one parent.** Each walk up from a table stops below a level that holds another table, so one pane never takes or deletes the button of the other.

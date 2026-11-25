@@ -14,7 +14,7 @@
  */
 
 /**
- * The result of one query, as the Explore table holds it.
+ * The result of one query, as the table of Explore or of a dashboard panel holds it.
  * @typedef {object} GrafanaDataFrame
  * @property {GrafanaField[]} fields
  * @property {string} [refId]
@@ -28,11 +28,22 @@ const GrafanaTableExportFrames = (() => {
 
   // Grafana 12.3 and earlier: Explore rendered its own table, with this label on it.
   const LABELLED_TABLE_SELECTOR = '[aria-label="Explore Table"]';
-  // Grafana 12.4 and later: Explore renders the table panel, which draws a react-data-grid.
+  // Grafana 12.4 and later: Explore and a dashboard render the table panel, with a react-data-grid.
   const GRID_SELECTOR = '[role="grid"]';
   const TABLE_SELECTOR = `${LABELLED_TABLE_SELECTOR}, ${GRID_SELECTOR}`;
-  // The table panel also runs in a dashboard. Only Explore gets an Export button.
+  // Explore and a dashboard draw the same table panel. Explore shows the Export button at all times,
+  // a dashboard only while the mouse is over the panel.
   const EXPLORE_SELECTOR = '[data-testid="data-testid Explore"]';
+  // The menu button that Grafana draws in the title bar of a dashboard panel. Never match it by its
+  // `aria-label`: Grafana translates that label. A panel with no title gets the second test id.
+  const MENU_BUTTON_SELECTOR = '[data-testid^="data-testid Panel menu"], [data-testid="panel-menu-button"]';
+  // The Export button sits this far from the right edge of the section, and this far from the menu
+  // button. With no title bar to sit on, it sits this far from the top edge.
+  const EDGE_GAP = 8;
+  const TOP_GAP = 6;
+  const BUTTON_GAP = 6;
+  // Grafana hides the menu button of a panel with no title, so it measures 0. Reserve its real size.
+  const MENU_BUTTON_WIDTH = 20;
   // The section of the table. Grafana 12.3 and earlier named it `section-wrapper-Table`. Grafana 12.4
   // and later name it `data-testid Panel header <title>`.
   const SECTION_SELECTOR = '[data-testid^="section-wrapper-Table"], [data-testid^="data-testid Panel header"]';
@@ -40,6 +51,7 @@ const GrafanaTableExportFrames = (() => {
   // `data-testid header-container`.
   const TITLE_BAR_SELECTOR = '[data-testid$="header-container"]';
   // The title that Explore gives the panel: "Table", or "Table - <name>" with more than one frame.
+  // A dashboard panel carries free text, which the test id of the title bar finds instead.
   const TITLE_PATTERN = /^Table\b/;
 
   /**
@@ -155,15 +167,17 @@ const GrafanaTableExportFrames = (() => {
 
   /**
    * @param {Element} element An element that `TABLE_SELECTOR` matched.
-   * @returns {boolean} `true` when the element is a result table of Explore.
+   * @returns {boolean} `true` when the element is a result table that gets an Export button.
    */
   function isResultTable(element) {
     // The label named the result table of Explore by itself. Keep such a table even when it carries no
     // frame, so a change to the data shape shows the error of the export, not a button that never comes.
     if (element.matches(LABELLED_TABLE_SELECTOR)) return true;
-    // A dashboard draws the same grid, and react-data-grid draws a second, hidden grid to measure the
-    // scrollbar. The hidden grid carries no React fiber, so the walk up finds no frame.
-    return element.closest(EXPLORE_SELECTOR) !== null && findDataFrame(element) !== null;
+    // The table of a panel, in Explore or in a dashboard. The panel inspector draws its own grid in a
+    // drawer outside every section, so it gets no button. react-data-grid draws a second, hidden grid
+    // to measure the scrollbar: it carries no React fiber, so the walk up finds no frame.
+    const inPanel = sectionOf(element) !== null || element.closest(EXPLORE_SELECTOR) !== null;
+    return inPanel && findDataFrame(element) !== null;
   }
 
   /**
@@ -208,6 +222,33 @@ const GrafanaTableExportFrames = (() => {
   }
 
   /**
+   * The levels above the table that can hold its Export button: from the parent of the table up to
+   * the section of the table, and including it. The walk stops below a level that holds the table
+   * of another section, so one pane of a split view never takes the button of the other. It stops
+   * at the section, so the button of a table never leaves its own panel of a dashboard.
+   * Two walks read this list: the one that looks for the title bar, and the one that looks for the
+   * button of an earlier scan. They must agree, or a button lands where the next scan cannot see it.
+   * @param {Element} tableElement
+   * @param {Element[]} others The result tables of the other sections.
+   * @param {number} maxDepth How many levels to walk at most, so a walk never reaches the root.
+   * @returns {{ level: Element, branch: Element }[]} `branch` is the child of `level` that holds the table.
+   */
+  function levelsToSection(tableElement, others, maxDepth) {
+    const section = sectionOf(tableElement);
+    /** @type {{ level: Element, branch: Element }[]} */
+    const levels = [];
+    let branch = tableElement;
+    for (let depth = 0; depth < maxDepth && branch.parentElement !== null; depth++) {
+      const level = branch.parentElement;
+      if (others.some((table) => level.contains(table))) break;
+      levels.push({ level, branch });
+      if (level === section) break;
+      branch = level;
+    }
+    return levels;
+  }
+
+  /**
    * The result tables that belong to another section. One pane of a split view is one section.
    * Two tables in one section share one Export button, so neither one stops the walk up of the other.
    * @param {Element} tableElement
@@ -219,5 +260,66 @@ const GrafanaTableExportFrames = (() => {
     return tables.filter((table) => table !== tableElement && (section === null || !section.contains(table)));
   }
 
-  return { findTables, sectionOf, tablesOfOtherSections, titleBarOf, findDataFrame, frameToTable, executedQuery, fileName };
+  /**
+   * Explore shows one table and nothing else, so its button stays visible. A dashboard panel holds a
+   * chart as often as a table, and Grafana hides its own controls there until the mouse arrives.
+   * @param {Element} tableElement
+   * @returns {boolean} `true` when the button shows with no mouse over the panel and no focus in it.
+   */
+  function showsButtonAtRest(tableElement) {
+    // Only Explore labels a table, so the label alone names the table of Explore.
+    if (tableElement.matches(LABELLED_TABLE_SELECTOR)) return true;
+    return tableElement.closest(EXPLORE_SELECTOR) !== null;
+  }
+
+  /**
+   * The Export button sits on the line of the title bar. Grafana draws no box for the hover header
+   * of a panel with no title, so such a header measures zero and the button takes the top edge.
+   * @param {number} hostTop The top edge of the host of the button, from `getBoundingClientRect`.
+   * @param {{ top: number, height: number } | null} headerBox The box of the title bar, or `null`.
+   * @param {number} buttonHeight
+   * @returns {number} The space in pixels between the Export button and the top edge of the host.
+   */
+  function topOffset(hostTop, headerBox, buttonHeight) {
+    if (headerBox === null || headerBox.height === 0) return TOP_GAP;
+    return Math.max(0, Math.round(headerBox.top - hostTop + headerBox.height / 2 - buttonHeight / 2));
+  }
+
+  /**
+   * @param {Element} element The title bar of the section, or the section.
+   * @returns {Element | null} The menu button that Grafana draws in the title bar.
+   */
+  function menuButtonOf(element) {
+    return element.querySelectorAll(MENU_BUTTON_SELECTOR)[0] ?? null;
+  }
+
+  /**
+   * The Export button must never cover the menu button of Grafana, whatever the padding of the host,
+   * the zoom of the browser or the theme. So measure the two boxes, never trust a fixed size.
+   * @param {number} hostRight The right edge of the host of the button, from `getBoundingClientRect`.
+   * @param {{ left: number, width: number } | null} menuButton Its box, or `null` with no menu button.
+   * @returns {number} The space in pixels between the Export button and the right edge of the host.
+   */
+  function rightOffset(hostRight, menuButton) {
+    if (menuButton === null) return EDGE_GAP;
+    // Grafana hides the menu button of a panel with no title, and a hidden box can measure zero.
+    if (menuButton.width === 0) return EDGE_GAP + MENU_BUTTON_WIDTH + BUTTON_GAP;
+    return Math.max(EDGE_GAP, Math.round(hostRight - menuButton.left) + BUTTON_GAP);
+  }
+
+  return {
+    findTables,
+    sectionOf,
+    tablesOfOtherSections,
+    levelsToSection,
+    titleBarOf,
+    showsButtonAtRest,
+    menuButtonOf,
+    rightOffset,
+    topOffset,
+    findDataFrame,
+    frameToTable,
+    executedQuery,
+    fileName,
+  };
 })();

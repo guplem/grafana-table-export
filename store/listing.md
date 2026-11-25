@@ -35,18 +35,18 @@ The name puts "Grafana" after "for", as "Image Viewer for GitHub" does with "Git
 
 ### Summary (comes from the zip: the `description` in `manifest.json`, at most 132 characters)
 
-Export the full result table of Grafana Explore as Markdown, CSV, TSV, JSON or plain text. Copy it or download a file.
+Export a full Grafana table, in Explore or a dashboard, as Markdown, CSV, TSV, JSON or plain text. Copy it or download a file.
 
 ### Description (paste this whole block)
 
-Export the whole result of a Grafana Explore query in one click.
+Export a whole Grafana table in one click, in Explore and in a dashboard.
 
-Grafana Explore shows a query result as a table, but it renders only the rows on screen. To share a result in a pull request, a doc or a chat, you end up with screenshots or with hand-copied rows. Table Export for Grafana adds an Export button above the table. It reads the full result, every row, and gives it to you in the format that you need.
+Grafana shows a result as a table, but it renders only the rows on screen. To share a table in a pull request, a doc or a chat, you end up with screenshots or with hand-copied rows. Table Export for Grafana adds an Export button above the table, in Explore and on the table panels of a dashboard (Grafana 12.2 or later). It reads the full result, every row, and gives it to you in the format that you need.
 
 HOW IT WORKS
 
-1. Run a query in Grafana Explore.
-2. Press Export at the top right of the table.
+1. Open a dashboard with a table panel, or run a query in Grafana Explore.
+2. Press Export at the top right of the table. In a dashboard it shows while the mouse is over the panel, or while the keyboard focus is in it.
 3. Pick a format, then Copy or Download.
 
 FORMATS
@@ -59,8 +59,8 @@ FORMATS
 FEATURES
 • The full result, not only the visible rows.
 • Formatted values, as the table shows them with units and dates, or the raw values.
-• Works with every data source that Explore shows as a table.
-• Works with Grafana's fast page changes, new queries and the split view.
+• Works in Explore, and on the Grafana table panels of a dashboard (Grafana 12.2 or later), with every data source.
+• Works with Grafana's fast page changes, new queries, the split view and a dashboard refresh.
 
 TURN IT ON FOR YOUR GRAFANA
 Grafana Cloud (grafana.net) works right after the install. For a self-hosted Grafana, click the extension icon on your Grafana page and press "Turn on". Chrome asks you once to allow that one site. The extension runs on no other site.
@@ -110,7 +110,7 @@ English
 
 ### Single purpose description
 
-Table Export for Grafana exports the result table of a Grafana Explore query as Markdown, CSV, TSV, JSON or plain text, to the clipboard or to a file.
+Table Export for Grafana exports a result table of Grafana, in Explore or in a dashboard, as Markdown, CSV, TSV, JSON or plain text, to the clipboard or to a file.
 
 ### Permission justifications
 
@@ -124,7 +124,7 @@ The extension runs its export scripts on the Grafana sites that the user turned 
 A self-hosted Grafana can live at any address, so the extension cannot list the sites in advance. The extension never asks for all sites. It asks for one site only, when the user presses "Turn on for <site>" in the popup on that site, and Chrome shows its own prompt. The user can turn a site off in the popup or in the Chrome settings.
 
 **Host permission for the content script on `https://*.grafana.net/*`**
-Grafana Cloud uses this domain. The content script runs there from the install, so Grafana Cloud users need no extra step. It only adds the Export button above the result tables of Explore, and reads a table only when the user presses Copy or Download.
+Grafana Cloud uses this domain. The content script runs there from the install, so Grafana Cloud users need no extra step. It only adds the Export button above the result tables of Explore and of a dashboard, and reads a table only when the user presses Copy or Download.
 
 ### Remote code
 
