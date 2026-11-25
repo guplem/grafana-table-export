@@ -9,6 +9,8 @@
   pageWindow[started] = true;
 
   function scan() {
+    // A page change can drop the button of an open menu, and leave no table behind to find.
+    GrafanaTableExportMenu.closeOrphanMenu();
     const tables = GrafanaTableExportFrames.findTables(document);
     tables.forEach((table) => GrafanaTableExportMenu.attachExportButton(table, tables));
   }

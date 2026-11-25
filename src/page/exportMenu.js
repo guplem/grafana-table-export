@@ -99,12 +99,12 @@ const GrafanaTableExportMenu = (() => {
   }
 
   /**
-   * @param {Element} tableElement
+   * @param {Element | null} tableElement `null` when Grafana dropped the table of this button.
    * @param {string} formatKey
    * @param {'copy' | 'download'} action
    */
   function runExport(tableElement, formatKey, action) {
-    const frame = GrafanaTableExportFrames.findDataFrame(tableElement);
+    const frame = tableElement === null ? null : GrafanaTableExportFrames.findDataFrame(tableElement);
     const format = GrafanaTableExportFormats.FORMATS[formatKey];
     if (frame === null || format === undefined) {
       toast('Table Export: could not read the table data.', true);
@@ -166,7 +166,7 @@ const GrafanaTableExportMenu = (() => {
   }
 
   /**
-   * @param {() => Element} tableNow The result table of the section, read again on each export.
+   * @param {() => Element | null} tableNow The result table of the section, read again on each export.
    * @param {() => void} close
    * @returns {HTMLDivElement}
    */
@@ -228,7 +228,8 @@ const GrafanaTableExportMenu = (() => {
 
   /**
    * Finds the title bar above the table: walk up from the table, and at each level look at the siblings
-   * before the branch that holds the table. The button goes in `host`, on the line of `header`.
+   * before the branch that holds the table. The walk stops at the section, so the button of a table
+   * never leaves its own panel. The button goes in `host`, on the line of `header`.
    * @param {Element} tableElement
    * @param {Element[]} others The result tables of the other sections.
    * @returns {{ host: Element | null, header: Element | null }}
@@ -310,10 +311,11 @@ const GrafanaTableExportMenu = (() => {
   }
 
   /**
-   * Finds the buttons that a scan already put in the section of this table, at any level.
+   * Finds the buttons that a scan already put in the section of this table, at any level of it.
    * The title host can change between scans: Grafana can render the "Table" title after the first scan,
-   * or render it again later. So look at every level of the section, not only in the current host.
+   * or render it again later. So look at every level up to the section, not only in the current host.
    * The walk stops below a level that holds another table, so it never takes the button of another pane.
+   * It walks the same levels as `findTitleBar`, so it reaches every host that `findTitleBar` can pick.
    * @param {Element} tableElement
    * @param {Element[]} others The result tables of the other sections.
    * @returns {HTMLElement[]}
@@ -341,6 +343,14 @@ const GrafanaTableExportMenu = (() => {
    * @type {{ container: HTMLElement, close: () => void } | null}
    */
   let openMenu = null;
+
+  /**
+   * Closes a menu whose button left the page, such as after a page change or a panel that Grafana
+   * rendered again. Such a menu holds the table of the old render, and no button owns it any more.
+   */
+  function closeOrphanMenu() {
+    if (openMenu !== null && !openMenu.container.isConnected) openMenu.close();
+  }
 
   /** @param {HTMLElement} host */
   function prepareHost(host) {
@@ -378,7 +388,8 @@ const GrafanaTableExportMenu = (() => {
 
   /**
    * Adds the Export button to the section of one table, once. A later call moves it to the title bar
-   * when Grafana renders the title after the first call.
+   * when Grafana renders the title after the first call. Outside Explore the button hides until the
+   * mouse or the keyboard focus reaches the section.
    * @param {Element} tableElement
    * @param {Element[]} tables Every result table of the page. One scan finds them once for all of them.
    */
@@ -404,9 +415,6 @@ const GrafanaTableExportMenu = (() => {
       placeContainer(kept, host, header);
       return;
     }
-    // Grafana can render the panel again while the menu is open. That menu holds the table of the
-    // old render, so an export from it would give the data of before the refresh.
-    if (openMenu !== null && !openMenu.container.isConnected) openMenu.close();
     prepareHost(host);
 
     const container = document.createElement('div');
@@ -419,24 +427,29 @@ const GrafanaTableExportMenu = (() => {
     /**
      * Grafana renders the table again after each query and after each dashboard refresh, and a later
      * scan can move the button to another host. So read the table at export time, from where the
-     * button is now. A table element that Grafana dropped carries the data of the render before.
-     * @returns {Element}
+     * button is now. A table element that Grafana dropped carries the data of the render before, so
+     * it gives `null` and the export reports that it cannot read the table.
+     * @returns {Element | null}
      */
     function tableNow() {
       const currentHost = container.parentElement;
       const found = currentHost === null ? [] : GrafanaTableExportFrames.findTables(currentHost);
-      return found[0] ?? tableElement;
+      const live = found.find((table) => table.isConnected);
+      if (live !== undefined) return live;
+      return tableElement.isConnected ? tableElement : null;
     }
 
     /** @type {HTMLElement | null} */
     let menu = null;
+    // The Enter key and the Space key fire a click with no mouse behind it: `detail` is then 0.
+    let openedByKeyboard = false;
     /** @param {Event} event */
     const onOutside = (event) => {
       const target = /** @type {Node} */ (event.target);
       // A press inside the menu is the export itself. Let it through, or the click never lands.
       if (menu?.contains(target)) return;
-      // Grafana can render the panel again and drop the container while the menu is open. The menu
-      // would then stay on a page that no longer holds its button.
+      // Grafana can render the section again and drop the container while the menu is open. The
+      // menu would then stay on a page that no longer holds its button.
       if (!container.isConnected || !container.contains(target)) close();
     };
     /** @param {KeyboardEvent} event */
@@ -450,8 +463,10 @@ const GrafanaTableExportMenu = (() => {
     };
     function close() {
       if (menu === null) return;
-      // Give the focus back, or it falls to the start of the page after a keyboard export.
-      if (menu.contains(document.activeElement)) button.focus();
+      // Give the focus back to a person who came with the keyboard, or it falls to the start of the
+      // page. A mouse keeps no focus: the button of a dashboard panel must hide when the menu goes.
+      // `preventScroll` stops the page from jumping back when a scroll closed the menu.
+      if (openedByKeyboard && menu.contains(document.activeElement)) button.focus({ preventScroll: true });
       menu.remove();
       menu = null;
       container.removeAttribute(MENU_OPEN_MARK);
@@ -462,11 +477,12 @@ const GrafanaTableExportMenu = (() => {
       window.removeEventListener('resize', close);
     }
 
-    button.addEventListener('click', () => {
+    button.addEventListener('click', (event) => {
       if (menu !== null) {
         close();
         return;
       }
+      openedByKeyboard = event.detail === 0;
       // The Enter key opens a menu without a `mousedown`, so the menu of another panel can still be
       // open. Two open menus would leave the first one with no owner.
       openMenu?.close();
@@ -491,5 +507,5 @@ const GrafanaTableExportMenu = (() => {
     placeContainer(container, host, header);
   }
 
-  return { attachExportButton };
+  return { attachExportButton, closeOrphanMenu };
 })();
