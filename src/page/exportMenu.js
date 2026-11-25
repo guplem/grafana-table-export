@@ -235,26 +235,16 @@ const GrafanaTableExportMenu = (() => {
    * @returns {{ host: Element | null, header: Element | null }}
    */
   function findTitleBar(tableElement, others) {
-    const section = GrafanaTableExportFrames.sectionOf(tableElement);
-    let reachedSection = false;
-    let child = tableElement;
-    for (let depth = 0; depth < MAX_SECTION_DEPTH && child.parentElement; depth++) {
-      const parent = child.parentElement;
-      if (holdsOtherTable(parent, others)) break;
-      const header = GrafanaTableExportFrames.titleBarOf(parent, child);
-      if (header !== null) return { host: parent, header };
-      // A dashboard holds many panels. A walk above the section would put the button in the corner of
-      // the whole dashboard, far from its table.
-      if (parent === section) {
-        reachedSection = true;
-        break;
-      }
-      child = parent;
+    const levels = GrafanaTableExportFrames.levelsToSection(tableElement, others, MAX_SECTION_DEPTH);
+    for (const { level, branch } of levels) {
+      const header = GrafanaTableExportFrames.titleBarOf(level, branch);
+      if (header !== null) return { host: level, header };
     }
-    // `buttonsAround` must find the button on the next scan. It walks the same levels, so a host that
-    // the walk above did not reach would hide the button and give one more button on each scan.
-    const usable = reachedSection && section !== null && !holdsOtherTable(section, others);
-    const host = usable ? section : tableElement.parentElement;
+    // With no title bar, the whole section is the host, so the button sits in its top right corner.
+    // `buttonsAround` reads the same levels, so a host outside them would hide the button from the
+    // next scan, and that scan would add one more button.
+    const section = GrafanaTableExportFrames.sectionOf(tableElement);
+    const host = levels.at(-1)?.level === section ? section : tableElement.parentElement;
     return { host, header: null };
   }
 
@@ -297,15 +287,6 @@ const GrafanaTableExportMenu = (() => {
   }
 
   /**
-   * @param {Element} level
-   * @param {Element[]} others The result tables of the other sections.
-   * @returns {boolean} `true` when `level` also holds the table of another section, such as the other pane of a split view.
-   */
-  function holdsOtherTable(level, others) {
-    return others.some((table) => level.contains(table));
-  }
-
-  /**
    * Finds the buttons that a scan already put in the section of this table, at any level of it.
    * The title host can change between scans: Grafana can render the "Table" title after the first scan,
    * or render it again later. So look at every level up to the section, not only in the current host.
@@ -316,19 +297,14 @@ const GrafanaTableExportMenu = (() => {
    * @returns {HTMLElement[]}
    */
   function buttonsAround(tableElement, others) {
-    const section = GrafanaTableExportFrames.sectionOf(tableElement);
     /** @type {HTMLElement[]} */
     const found = [];
-    let level = tableElement.parentElement;
-    for (let depth = 0; level !== null && depth < MAX_SECTION_DEPTH; depth++, level = level.parentElement) {
-      if (holdsOtherTable(level, others)) break;
+    for (const { level } of GrafanaTableExportFrames.levelsToSection(tableElement, others, MAX_SECTION_DEPTH)) {
       for (const child of level.children) {
         if (child instanceof HTMLElement && (child.hasAttribute(BUTTON_MARK) || child.hasAttribute(LEGACY_BUTTON_MARK))) {
           found.push(child);
         }
       }
-      // `findTitleBar` never puts the button above the section, so a button above it belongs elsewhere.
-      if (level === section) break;
     }
     return found;
   }

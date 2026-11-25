@@ -224,6 +224,41 @@ test('menuButtonOf gives null where Grafana draws no menu button, such as Explor
   assert.equal(frames.menuButtonOf(frames.sectionOf(frames.findTables(page)[0])), null);
 });
 
+test('levelsToSection walks from the table up to its section, and stops there', () => {
+  const page = dashboardPage([{ frame: sampleFrame() }]);
+  const table = frames.findTables(page)[0];
+  const levels = frames.levelsToSection(table, [], 12);
+  // The content of the panel, then the section. The dashboard above the section is not a level.
+  assert.equal(levels.length, 2);
+  assert.equal(levels[0].level, table.parentElement);
+  assert.equal(levels[0].branch, table);
+  assert.equal(levels[1].level, frames.sectionOf(table));
+  assert.equal(levels[1].branch, table.parentElement);
+});
+
+test('levelsToSection stops below a level that holds the table of another section', () => {
+  const page = explorePage([sampleFrame(), sampleFrame()]);
+  const [first, second] = frames.findTables(page);
+  const levels = frames.levelsToSection(first, [second], 12);
+  // The last level is the section of the first pane. The level above it holds both panes.
+  assert.equal(levels.at(-1).level, frames.sectionOf(first));
+  assert.equal(
+    levels.every((/** @type {{ level: FakeElement }} */ { level }) => !level.contains(second)),
+    true,
+  );
+});
+
+test('levelsToSection walks no further than the depth that it is given', () => {
+  const page = dashboardPage([{ frame: sampleFrame() }]);
+  const table = frames.findTables(page)[0];
+  assert.equal(frames.levelsToSection(table, [], 1).length, 1);
+  // A table with no section walks up to the depth, and no further.
+  const deep = new FakeElement({ attributes: { 'aria-label': 'Explore Table' } });
+  let node = deep;
+  for (let level = 0; level < 5; level++) node = new FakeElement({ children: [node] });
+  assert.equal(frames.levelsToSection(deep, [], 3).length, 3);
+});
+
 test('topOffset puts the button on the line of the title bar', () => {
   // A title bar 40 pixels tall at the top of the host, and a button 24 pixels tall.
   assert.equal(frames.topOffset(100, { top: 100, height: 40 }, 24), 8);

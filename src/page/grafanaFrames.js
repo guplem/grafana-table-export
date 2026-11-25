@@ -222,6 +222,33 @@ const GrafanaTableExportFrames = (() => {
   }
 
   /**
+   * The levels above the table that can hold its Export button: from the parent of the table up to
+   * the section of the table, and including it. The walk stops below a level that holds the table
+   * of another section, so one pane of a split view never takes the button of the other. It stops
+   * at the section, so the button of a table never leaves its own panel of a dashboard.
+   * Two walks read this list: the one that looks for the title bar, and the one that looks for the
+   * button of an earlier scan. They must agree, or a button lands where the next scan cannot see it.
+   * @param {Element} tableElement
+   * @param {Element[]} others The result tables of the other sections.
+   * @param {number} maxDepth How many levels to walk at most, so a walk never reaches the root.
+   * @returns {{ level: Element, branch: Element }[]} `branch` is the child of `level` that holds the table.
+   */
+  function levelsToSection(tableElement, others, maxDepth) {
+    const section = sectionOf(tableElement);
+    /** @type {{ level: Element, branch: Element }[]} */
+    const levels = [];
+    let branch = tableElement;
+    for (let depth = 0; depth < maxDepth && branch.parentElement !== null; depth++) {
+      const level = branch.parentElement;
+      if (others.some((table) => level.contains(table))) break;
+      levels.push({ level, branch });
+      if (level === section) break;
+      branch = level;
+    }
+    return levels;
+  }
+
+  /**
    * The result tables that belong to another section. One pane of a split view is one section.
    * Two tables in one section share one Export button, so neither one stops the walk up of the other.
    * @param {Element} tableElement
@@ -284,6 +311,7 @@ const GrafanaTableExportFrames = (() => {
     findTables,
     sectionOf,
     tablesOfOtherSections,
+    levelsToSection,
     titleBarOf,
     showsButtonAtRest,
     menuButtonOf,
