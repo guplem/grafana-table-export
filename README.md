@@ -54,7 +54,7 @@ Open the popup on that tab. If it says "Off", turn it on. If it says "On", run t
 
 Grafana 12.4 changed the result table of Explore. The extension works with that new table, and with the table of Grafana 12.3 and earlier. A dashboard needs Grafana 12.2 or later, where the table panel started to draw that new table. The last check ran on Grafana 13.4. A newer Grafana can change the table again: open an issue with your Grafana version.
 
-In a dashboard the button shows only on the table panel that Grafana itself draws. A table panel from another plugin, the panel inspector and the panel edit view get no button.
+In a dashboard the button shows only on the table panel that Grafana draws. A table panel of another plugin gets no button. The panel inspector gets no button. The panel edit view shows the button on its preview.
 
 **The export says "could not read the table data".**
 A Grafana update can change how Grafana keeps the result. Open an issue with your Grafana version (in **Help**, the `?` icon).
