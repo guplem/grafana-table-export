@@ -76,6 +76,35 @@ test('frameToTable falls back to the raw value when display fails', () => {
   assert.deepEqual(plain(frames.frameToTable(frame, true)), { columns: ['n'], rows: [['7']] });
 });
 
+test('frameToTable gives an object or an array cell as JSON, not as [object Object]', () => {
+  // Grafana's display function turns an object into text with String().
+  const display = (/** @type {unknown} */ value) => ({ text: String(value) });
+  const frame = {
+    fields: [
+      { name: 'actual', type: 'other', values: [{ annotation_count: 0, agreement: null }], display },
+      { name: 'top', type: 'other', values: [[{ id: 'a' }, { id: 'b' }]], display },
+    ],
+  };
+  const expected = [['{"annotation_count":0,"agreement":null}', '[{"id":"a"},{"id":"b"}]']];
+  assert.deepEqual(plain(frames.frameToTable(frame, true).rows), expected);
+  assert.deepEqual(plain(frames.frameToTable(frame, false).rows), expected);
+});
+
+test('frameToTable keeps the display text of a Date object', () => {
+  const frame = { fields: [{ name: 't', type: 'time', values: [new Date(0)], display: () => ({ text: '1970-01-01' }) }] };
+  assert.deepEqual(plain(frames.frameToTable(frame, true).rows), [['1970-01-01']]);
+});
+
+test('frameToTable exports a cell with no JSON text and does not stop', () => {
+  /** @type {Record<string, unknown>} */
+  const circular = {};
+  circular.self = circular;
+  const frame = { fields: [{ name: 'x', values: [circular, { n: 1n }] }] };
+  for (const formatted of [true, false]) {
+    assert.deepEqual(plain(frames.frameToTable(frame, formatted).rows), [['[object Object]'], ['[object Object]']]);
+  }
+});
+
 test('executedQuery and fileName read the frame', () => {
   assert.equal(frames.executedQuery(sampleFrame()), 'SELECT time, size, name FROM tables');
   assert.equal(frames.executedQuery({ fields: [] }), '');
