@@ -107,8 +107,31 @@ const GrafanaTableExportFrames = (() => {
   function rawText(field, value) {
     if (value === null || value === undefined) return '';
     if (field.type === 'time' && typeof value === 'number') return new Date(value).toISOString();
-    if (typeof value === 'object') return JSON.stringify(value);
+    if (isJsonValue(value)) return jsonText(value);
     return String(value);
+  }
+
+  /**
+   * A plain object or an array, such as a JSON column. A Date or another class keeps its own text.
+   * @param {unknown} value
+   * @returns {value is object}
+   */
+  function isJsonValue(value) {
+    // The tag check, not a prototype check: a value can come from another realm.
+    return Array.isArray(value) || Object.prototype.toString.call(value) === '[object Object]';
+  }
+
+  /**
+   * @param {object} value
+   * @returns {string}
+   */
+  function jsonText(value) {
+    try {
+      return JSON.stringify(value) ?? String(value);
+    } catch {
+      // A circular object or a BigInt has no JSON text. One bad cell must not stop the export.
+      return String(value);
+    }
   }
 
   /**
@@ -119,7 +142,8 @@ const GrafanaTableExportFrames = (() => {
    */
   function formattedText(field, value) {
     if (value === null || value === undefined) return '';
-    if (typeof field.display !== 'function') return rawText(field, value);
+    // Grafana's display function turns an object or an array into "[object Object]".
+    if (typeof field.display !== 'function' || isJsonValue(value)) return rawText(field, value);
     try {
       const shown = field.display(value);
       return (shown.prefix ?? '') + (shown.text ?? '') + (shown.suffix ?? '');
